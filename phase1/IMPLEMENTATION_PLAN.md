@@ -23,7 +23,7 @@ PDF要約・質問応答アプリ
 | 4 | 環境変数ファイル（.env.local）の設定 | [ ] |
 | 5 | LLM APIの疎通確認（Hello World相当） | [ ] |
 | 6 | Supabaseプロジェクト作成・接続確認 | [ ] |
-| 7 | 画面ラフをdocs/screen_design.mdに書く | [ ] |
+| 7 | 画面ラフをdocs/screen_design.mdに書く | ✅ |
 
 ### 環境変数テンプレート（.env.local）
 
@@ -89,7 +89,9 @@ create table messages (
   tokens_used int,
   -- 回答根拠（どのチャンクを参照したか）
   -- Phase 1採用方式: citations jsonb を正とする
-  -- 形式: [{chunk_id, page_start, page_end, quote}]
+  -- DB保存形式（snake_case）: [{chunk_id, page_start, page_end, quote}]
+  -- APIレスポンス形式（camelCase）: [{chunkId, pageStart, pageEnd, quote}]
+  -- 変換責務: API層（src/lib/citations.ts 等）がDB→APIへ変換する
   citations jsonb,
   created_at timestamptz default now()
 );
