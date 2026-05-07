@@ -70,6 +70,8 @@ OPENAI_MODEL=llama3
 
 ### Supabaseテーブル設計
 
+- **ID型整合性ルール**: テーブル定義（`sessions.id` / `messages.id` / `documents.id` / `document_chunks.id` など）と、APIエンドポイントの入力で受け取るID（`sessionId` / `documentIds` / `cursor` 等）は、すべて **UUID** 型として一致させる。
+
 ```sql
 -- セッション
 create table sessions (

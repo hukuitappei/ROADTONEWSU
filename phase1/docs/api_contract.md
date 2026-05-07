@@ -10,6 +10,7 @@
 - Content-Type（JSON API）: `application/json`
 - 文字コード: UTF-8
 - 日時形式: ISO 8601（例: `2026-05-07T12:34:56Z`）
+- ID形式: **UUID**（`uploadId` / `messageId` / `documentIds` / `cursor` を含むすべてのID例をUUIDで統一）
 
 ### 共通エラーレスポンス形式
 
@@ -53,7 +54,7 @@ curl -X POST /api/upload \
 
 ```json
 {
-  "uploadId": "up_01JX8Q9M6Q1R7K2",
+  "uploadId": "1f8b3f26-4b08-4e9f-b7d2-f2f3c5c4e7a1",
   "sessionId": "6a8d8f0d-9d74-4ef1-8f92-4d7e0b7f0f78",
   "fileName": "sample.pdf",
   "fileSize": 248193,
@@ -99,7 +100,7 @@ curl -X POST /api/upload \
 {
   "sessionId": "6a8d8f0d-9d74-4ef1-8f92-4d7e0b7f0f78",
   "message": "このPDFの要点を3つで教えて",
-  "documentIds": ["doc_01JX8QA2M4"],
+  "documentIds": ["2c7adf6b-3f9d-4b8f-a48e-9b7c7f6a0d12"],
   "stream": true
 }
 ```
@@ -113,7 +114,7 @@ curl -X POST /api/upload \
 
 ```json
 {
-  "messageId": "msg_01JX8QB1N2",
+  "messageId": "5df2f5a7-3d4f-4db2-b0f7-bf5f1f1188e3",
   "sessionId": "6a8d8f0d-9d74-4ef1-8f92-4d7e0b7f0f78",
   "role": "assistant",
   "content": "要点は次の3つです...",
@@ -175,7 +176,7 @@ curl -X POST /api/upload \
 
 ```text
 event: start
-data: {"messageId":"msg_01JX8QB1N2"}
+data: {"messageId":"5df2f5a7-3d4f-4db2-b0f7-bf5f1f1188e3"}
 
 event: token
 data: {"delta":"要点は"}
@@ -203,7 +204,7 @@ data: {"finishReason":"stop"}
 
 #### 例
 
-`GET /api/sessions?limit=20&cursor=ses_01JX8Q`
+`GET /api/sessions?limit=20&cursor=6a8d8f0d-9d74-4ef1-8f92-4d7e0b7f0f78`
 
 ### 正常レスポンス例（200）
 
@@ -217,7 +218,7 @@ data: {"finishReason":"stop"}
       "createdAt": "2026-05-07T12:00:00Z"
     }
   ],
-  "nextCursor": "ses_01JX8R"
+  "nextCursor": "0f2e91c6-89d5-4b58-b3cd-4c2d5c01d2aa"
 }
 ```
 
@@ -260,13 +261,13 @@ data: {"finishReason":"stop"}
   },
   "messages": [
     {
-      "id": "msg_01JX8QB1N1",
+      "id": "9ac7f0cf-6a44-4a0f-8e7c-565e6f2f41e9",
       "role": "user",
       "content": "このPDFの要点を3つで教えて",
       "createdAt": "2026-05-07T12:35:20Z"
     },
     {
-      "id": "msg_01JX8QB1N2",
+      "id": "5df2f5a7-3d4f-4db2-b0f7-bf5f1f1188e3",
       "role": "assistant",
       "content": "要点は次の3つです...",
       "createdAt": "2026-05-07T12:35:56Z"
