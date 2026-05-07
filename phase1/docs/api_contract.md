@@ -118,7 +118,12 @@ curl -X POST /api/upload \
   "role": "assistant",
   "content": "要点は次の3つです...",
   "citations": [
-    { "documentId": "doc_01JX8QA2M4", "page": 2, "snippet": "..." }
+    {
+      "chunkId": "9a1cb8fd-95c6-42b0-a36f-f834348cb8f4",
+      "pageStart": 2,
+      "pageEnd": 2,
+      "quote": "この資料の目的は..."
+    }
   ],
   "usage": {
     "promptTokens": 1250,
@@ -128,6 +133,23 @@ curl -X POST /api/upload \
   "createdAt": "2026-05-07T12:35:56Z"
 }
 ```
+
+### レスポンスフィールド定義（非ストリーミング時）
+
+- `messageId` (required, string): 生成された assistant メッセージID
+- `sessionId` (required, string): 対象セッションID
+- `role` (required, string): 常に `assistant`
+- `content` (required, string): 回答本文
+- `citations` (required, array): 根拠配列（Phase 1採用方式）
+  - `chunkId` (required, string UUID): 根拠となるチャンクID
+  - `pageStart` (required, integer): 開始ページ
+  - `pageEnd` (required, integer): 終了ページ
+  - `quote` (required, string): 根拠抜粋テキスト
+- `usage` (optional): トークン使用量
+  - `promptTokens` (required, integer)
+  - `completionTokens` (required, integer)
+  - `totalTokens` (required, integer)
+- `createdAt` (required, string): 生成時刻（ISO 8601）
 
 ### 主要エラーレスポンス
 
