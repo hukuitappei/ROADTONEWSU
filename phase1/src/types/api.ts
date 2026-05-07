@@ -21,3 +21,17 @@ export type ChatRequest = {
   documentIds?: string[]
   stream?: boolean
 }
+
+export type ChatResponse = {
+  messageId: string
+  sessionId: string
+  role: 'assistant'
+  content: string
+  citations: Citation[]
+  usage?: {
+    promptTokens: number
+    completionTokens: number
+    totalTokens: number
+  }
+  createdAt: string
+}
