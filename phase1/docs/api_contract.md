@@ -1,6 +1,14 @@
 # API契約書（Phase 1）
 
-本ドキュメントは、`/api/upload`, `/api/chat`, `/api/sessions`, `/api/sessions/[id]` の入力・出力契約を定義する。
+本ドキュメントは、以下のエンドポイントの入力・出力契約を定義する。
+
+| # | メソッド | パス | 概要 |
+|---|---|---|---|
+| 1 | POST | `/api/upload` | PDFアップロード・処理開始 |
+| 2 | POST | `/api/chat` | 質問応答（Streaming対応） |
+| 3 | GET | `/api/sessions` | セッション一覧取得 |
+| 4 | GET | `/api/documents/[id]` | ドキュメント処理状態・詳細取得 |
+| 5 | GET | `/api/sessions/[id]` | セッション詳細・ドキュメント一覧・メッセージ履歴取得 |
 
 ---
 

@@ -110,7 +110,8 @@
 | POST | `/api/upload` | PDFアップロード・テキスト抽出・要約生成 |
 | POST | `/api/chat` | 質問応答（Streaming） |
 | GET | `/api/sessions` | セッション一覧取得 |
-| GET | `/api/sessions/[id]` | セッション詳細・メッセージ履歴取得 |
+| GET | `/api/documents/[id]` | ドキュメント処理状態・詳細取得（ポーリング用） |
+| GET | `/api/sessions/[id]` | セッション詳細・ドキュメント一覧・メッセージ履歴取得 |
 
 
 ---
@@ -146,7 +147,8 @@ AI: PDFの3ページ目によると、〇〇とは...
 
 - AI回答本文: `messages.content`
 - 根拠メタ情報（採用）: `messages.citations`（JSON）
-  - 例: `[{ "chunk_id": "...", "page_start": 3, "page_end": 4, "quote": "..." }]`
+  - 画面はAPIレスポンスのcamelCaseキーを使う: `[{ "chunkId": "...", "pageStart": 3, "pageEnd": 4, "quote": "..." }]`
+  - DB保存形式はsnake_case（`chunk_id`, `page_start`, `page_end`）。APIがcamelCaseに変換して返す。
 - 文書名表示（ヘッダー）: `documents.filename`
 
 ### 実装メモ

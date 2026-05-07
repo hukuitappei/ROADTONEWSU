@@ -102,6 +102,8 @@ create table documents (
   storage_path text not null,
   extracted_text text,
   summary text,
+  page_count int,
+  char_count int,
   status text not null default 'uploaded' check (status in ('uploaded', 'processing', 'ready', 'error')),
   error_message text,
   created_at timestamptz default now(),
