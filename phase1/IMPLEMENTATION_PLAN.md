@@ -174,12 +174,30 @@ user:
 
 ### コスト計算の実装方針
 
+- APIレスポンスの `usage` から `prompt_tokens` / `completion_tokens` を取得する。
+- 単価はコード内に直書きせず、`src/lib/pricing.ts`（想定）に集約した設定テーブルから参照する。
+- `pricing.ts` は `model` ごとに `input` / `output` の単価（例: USD / 1K tokens）を管理し、コスト計算関数はモデル名を引数にして参照する。
+- 未定義モデルを受け取った場合のフォールバック（エラー・既定モデル・0円扱いなど）を方針として明示する。
+
 ```typescript
-// APIレスポンスのusageからトークンを取得
-const usage = response.usage;
-const inputCost = (usage.prompt_tokens / 1000) * 0.00015;  // GPT-4o-mini例
-const outputCost = (usage.completion_tokens / 1000) * 0.0006;
-const totalCost = inputCost + outputCost;
+// src/lib/pricing.ts（責務イメージ）
+export const MODEL_PRICING_TABLE = {
+  'gpt-4o-mini': { inputPer1k: 0.00015, outputPer1k: 0.0006 },
+  // ...modelごとの単価
+} as const;
+
+export function estimateCost({ model, promptTokens, completionTokens }: {
+  model: string;
+  promptTokens: number;
+  completionTokens: number;
+}) {
+  const unit = MODEL_PRICING_TABLE[model as keyof typeof MODEL_PRICING_TABLE];
+  if (!unit) throw new Error(`Pricing not found for model: ${model}`);
+
+  const inputCost = (promptTokens / 1000) * unit.inputPer1k;
+  const outputCost = (completionTokens / 1000) * unit.outputPer1k;
+  return inputCost + outputCost;
+}
 ```
 
 ---
