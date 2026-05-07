@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { jsonError } from '@/lib/http'
-import { createDocument, createSession, getSession } from '@/lib/store'
+import { createDocument, createSession, getSession } from '@/lib/repository'
 import { isUuid } from '@/lib/validation'
 
 const MAX_PDF_BYTES = 10 * 1024 * 1024
@@ -43,7 +43,7 @@ export async function POST(req: Request) {
     })
   }
 
-  const session = sessionId ? getSession(sessionId) : createSession(`${file.name} の要約`)
+  const session = sessionId ? await getSession(sessionId) : await createSession(`${file.name} の要約`)
   if (!session) {
     return jsonError('BAD_REQUEST', '入力内容に誤りがあります。内容を確認してください。', 400, {
       field: 'sessionId',
@@ -51,14 +51,14 @@ export async function POST(req: Request) {
     })
   }
 
-  const document = createDocument(session.id, file.name, file.size)
+  const document = await createDocument(session.id, file.name)
 
   return NextResponse.json({
     uploadId: document.id,
     sessionId: session.id,
-    fileName: document.fileName,
-    fileSize: document.fileSize,
+    fileName: document.filename,
+    fileSize: file.size,
     status: document.status,
-    createdAt: document.createdAt,
+    createdAt: document.created_at ?? new Date().toISOString(),
   })
 }

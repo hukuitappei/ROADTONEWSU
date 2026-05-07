@@ -36,8 +36,6 @@ export type ChatResponse = {
   createdAt: string
 }
 
-// --- Sessions list ---
-
 export type SessionListItem = {
   id: string
   title: string
@@ -49,8 +47,6 @@ export type SessionsListResponse = {
   items: SessionListItem[]
   nextCursor: string | null
 }
-
-// --- Document detail ---
 
 export type DocumentStatus = 'uploaded' | 'processing' | 'ready' | 'error'
 
@@ -70,8 +66,6 @@ export type DocumentDetail = {
 export type DocumentDetailResponse = {
   document: DocumentDetail
 }
-
-// --- Session detail ---
 
 export type SessionDetail = {
   id: string
@@ -101,3 +95,55 @@ export type SessionDetailResponse = {
   messages: MessageItem[]
   hasMore: boolean
 }
+
+export type DbSessionRow = { id: string; title: string | null; created_at: string | null }
+export type DbMessageRow = { id: string; session_id: string; role: 'user' | 'assistant'; content: string | null; created_at: string | null }
+export type DbDocumentRow = {
+  id: string
+  session_id: string
+  filename: string
+  status: DocumentStatus
+  summary: string | null
+  page_count: number | null
+  char_count: number | null
+  created_at: string | null
+  updated_at: string | null
+}
+
+const toIso = (v: string | null | undefined) => v ?? new Date(0).toISOString()
+const normalizeTitle = (title: string | null | undefined) => title?.trim() || 'Untitled Session'
+
+export const mapDbSessionToSessionDetail = (row: DbSessionRow): SessionDetail => ({
+  id: row.id,
+  title: normalizeTitle(row.title),
+  createdAt: toIso(row.created_at),
+})
+
+export const mapDbMessageToMessageItem = (row: DbMessageRow): MessageItem => ({
+  id: row.id,
+  role: row.role,
+  content: row.content ?? '',
+  createdAt: toIso(row.created_at),
+})
+
+export const mapDbDocumentToDetail = (row: DbDocumentRow): DocumentDetail => ({
+  id: row.id,
+  sessionId: row.session_id,
+  fileName: row.filename,
+  status: row.status,
+  qaEnabled: row.status === 'ready',
+  summary: row.summary,
+  pageCount: row.page_count,
+  charCount: row.char_count,
+  createdAt: toIso(row.created_at),
+  updatedAt: toIso(row.updated_at),
+})
+
+export const mapDbDocumentToSummary = (row: DbDocumentRow): DocumentSummary => ({
+  id: row.id,
+  fileName: row.filename,
+  status: row.status,
+  qaEnabled: row.status === 'ready',
+  summary: row.summary,
+  createdAt: toIso(row.created_at),
+})

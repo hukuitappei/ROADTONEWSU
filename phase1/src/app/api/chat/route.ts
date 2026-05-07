@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { jsonError, mapProviderStatusToApiError } from '@/lib/http'
 import { generateAnswer, streamAnswer } from '@/lib/llm'
-import { addMessage, getSession } from '@/lib/store'
+import { addMessage, getSession } from '@/lib/repository'
 import { isUuid } from '@/lib/validation'
 import type { ChatRequest, ChatResponse } from '@/types/api'
 
@@ -68,7 +68,7 @@ export async function POST(req: Request) {
     })
   }
 
-  const session = getSession(body.sessionId)
+  const session = await getSession(body.sessionId)
   if (!session) {
     return jsonError('BAD_REQUEST', '入力内容に誤りがあります。内容を確認してください。', 400, {
       field: 'sessionId',
@@ -80,7 +80,7 @@ export async function POST(req: Request) {
   const createdAt = new Date().toISOString()
   const shouldStream = body.stream ?? true
 
-  addMessage(session.id, 'user', body.message)
+  await addMessage(session.id, 'user', body.message)
 
   try {
     if (shouldStream) {
@@ -155,7 +155,7 @@ export async function POST(req: Request) {
     }
 
     const result = await generateAnswer({ prompt: body.message })
-    const assistantMessage = addMessage(session.id, 'assistant', result.content)
+    const assistantMessage = await addMessage(session.id, 'assistant', result.content)
 
     const response: ChatResponse = {
       messageId: assistantMessage?.id ?? messageId,

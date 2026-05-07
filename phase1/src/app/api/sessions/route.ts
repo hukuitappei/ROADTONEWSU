@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
 import { jsonError } from '@/lib/http'
-import { listSessions } from '@/lib/store'
+import { listSessions } from '@/lib/repository'
 import { isUuid } from '@/lib/validation'
-import type { SessionsListResponse } from '@/types/api'
+import { mapDbSessionToSessionDetail, type SessionsListResponse } from '@/types/api'
 
 export async function GET(req: Request) {
   const url = new URL(req.url)
@@ -24,15 +24,10 @@ export async function GET(req: Request) {
     })
   }
 
-  const raw = listSessions(limit, cursor)
+  const raw = await listSessions(limit, cursor)
 
   const response: SessionsListResponse = {
-    items: raw.items.map((s) => ({
-      id: s.id,
-      title: s.title,
-      lastMessageAt: s.lastMessageAt,
-      createdAt: s.createdAt,
-    })),
+    items: raw.items.map((s) => ({ ...mapDbSessionToSessionDetail(s), lastMessageAt: s.created_at ?? new Date(0).toISOString() })),
     nextCursor: raw.nextCursor,
   }
 

@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
 import { jsonError } from '@/lib/http'
-import { getMessages, getSession, getSessionDocuments } from '@/lib/store'
+import { getMessages, getSession, getSessionDocuments } from '@/lib/repository'
 import { isUuid } from '@/lib/validation'
-import type { SessionDetailResponse } from '@/types/api'
+import { mapDbDocumentToSummary, mapDbMessageToMessageItem, mapDbSessionToSessionDetail, type SessionDetailResponse } from '@/types/api'
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   if (!isUuid(params.id)) {
@@ -12,7 +12,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     })
   }
 
-  const session = getSession(params.id)
+  const session = await getSession(params.id)
   if (!session) {
     return jsonError('NOT_FOUND', '対象のセッションが見つかりません。', 404, {
       field: 'id',
@@ -39,29 +39,13 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     })
   }
 
-  const { items: msgs, hasMore } = getMessages(session.id, limit, before)
-  const docs = getSessionDocuments(session.id)
+  const { items: msgs, hasMore } = await getMessages(session.id, limit, before)
+  const docs = await getSessionDocuments(session.id)
 
   const response: SessionDetailResponse = {
-    session: {
-      id: session.id,
-      title: session.title,
-      createdAt: session.createdAt,
-    },
-    documents: docs.map((doc) => ({
-      id: doc.id,
-      fileName: doc.fileName,
-      status: doc.status,
-      qaEnabled: doc.qaEnabled,
-      summary: doc.summary,
-      createdAt: doc.createdAt,
-    })),
-    messages: msgs.map((msg) => ({
-      id: msg.id,
-      role: msg.role,
-      content: msg.content,
-      createdAt: msg.createdAt,
-    })),
+    session: mapDbSessionToSessionDetail(session),
+    documents: docs.map(mapDbDocumentToSummary),
+    messages: msgs.map(mapDbMessageToMessageItem),
     hasMore,
   }
 
