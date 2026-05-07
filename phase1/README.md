@@ -45,3 +45,12 @@ NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 ```
+
+## Supabaseマイグレーション（追加）
+
+- `phase1/supabase/migrations/20260507_001_init_phase1.sql` を追加しました。
+- 適用時は Supabase SQL Editor か CLI で実行してください。
+
+## テスト（現時点）
+
+- `phase1/tests/api_contract_smoke.sh` でAPI契約の主要要素をスモークチェックできます。
