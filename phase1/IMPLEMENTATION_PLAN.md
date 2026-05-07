@@ -20,7 +20,7 @@ PDF要約・質問応答アプリ
 | 1 | 技術スタック確定（Next.js + Supabase + OpenAI API） | ✅ |
 | 2 | GitHubリポジトリ作成・初期コミット | ✅ |
 | 3 | Next.js プロジェクト初期化（TypeScript + Tailwind + App Router） | [ ] |
-| 4 | 環境変数ファイル（.env.local）の設定 | [ ] |
+| 4 | 環境変数ファイル（.env.local）の設定 | ✅ |
 | 5 | LLM APIの疎通確認（Hello World相当） | [ ] |
 | 6 | Supabaseプロジェクト作成・接続確認 | [ ] |
 | 7 | 画面ラフをdocs/screen_design.mdに書く | ✅ |
@@ -59,14 +59,14 @@ OPENAI_MODEL=llama3
 | # | タスク | 完了 |
 |---|---|---|
 | 1 | API契約書作成（`docs/api_contract.md`） | ✅ |
-| 2 | API契約に基づく実装（`/api/upload` `/api/chat` `/api/sessions` `/api/sessions/[id]`） | [ ] |
-| 3 | `/api/chat` エンドポイント作成 | [ ] |
-| 4 | LLMサービス層（`src/lib/llm.ts`）作成 | [ ] |
+| 2 | API契約に基づく実装（`/api/upload` `/api/chat` `/api/sessions` `/api/sessions/[id]`） | ✅ |
+| 3 | `/api/chat` エンドポイント作成 | ✅ |
+| 4 | LLMサービス層（`src/lib/llm.ts`）作成 | ✅ |
 | 5 | チャットUIの基本実装 | [ ] |
-| 6 | Streaming対応（逐次表示） | [ ] |
-| 7 | Supabaseのテーブル設計・マイグレーション | [ ] |
-| 8 | 入力・出力履歴のDB保存 | [ ] |
-| 9 | エラー処理（API失敗・空入力・タイムアウト） | [ ] |
+| 6 | Streaming対応（逐次表示） | ✅ |
+| 7 | Supabaseのテーブル設計・マイグレーション | ✅ |
+| 8 | 入力・出力履歴のDB保存（Supabase永続化） | [ ] |
+| 9 | エラー処理（API失敗・空入力・タイムアウト） | ✅ |
 
 ### Supabaseテーブル設計
 
@@ -322,16 +322,16 @@ export function estimateCost({ model, promptTokens, completionTokens }: {
 
 Phase 1で身につけるべきスキル：
 
-- [ ] LLM APIの基本呼び出し（テキスト生成）
-- [ ] Streaming（逐次出力）
+- ✅ LLM APIの基本呼び出し（テキスト生成）
+- ✅ Streaming（逐次出力）
 - [ ] Structured Output（JSON出力）
-- [ ] system / user / assistant ロールの設計
+- ✅ system / user / assistant ロールの設計
 - [ ] PDFのテキスト抽出
 - [ ] Next.js App Router の基本構成
-- [ ] API Routes の作り方
+- ✅ API Routes の作り方
 - [ ] Supabase の基本CRUD
-- [ ] 環境変数の管理
-- [ ] エラー処理パターン
+- ✅ 環境変数の管理
+- ✅ エラー処理パターン
 - [ ] トークンとコストの計算方法
 
 ---

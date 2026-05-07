@@ -6,18 +6,43 @@ LLM APIを使って、実際に使えるPDF要約・質問応答アプリを1つ
 
 ## 現在の進捗
 
-**25%（Week 3〜4 実装着手済み）**
+**35%（Week 3〜4 APIスケルトン完成）**
 
 ---
 
-## このリポジトリで実装済み（Week 3〜4 先行）
+## 実装済み
 
-- API契約に沿った型定義を追加（`src/types/api.ts`）
-- 共通エラーレスポンス/ヘルパーを追加（`src/lib/http.ts`）
-- LLMサービス層の最小実装を追加（`src/lib/llm.ts`）
-- `/api/chat` の最小ルート実装を追加（`src/app/api/chat/route.ts`）
-- セッション一覧・詳細、アップロード雛形APIを追加
-- ローカル起動手順（Next.js）を追記
+### API・バックエンド骨格（Week 3〜4 完了）
+
+| ファイル | 内容 |
+|---|---|
+| `src/types/api.ts` | API型定義（ChatRequest / ChatResponse / DocumentDetailResponse / SessionDetailResponse 等） |
+| `src/lib/http.ts` | 共通エラーレスポンスヘルパー（`jsonError` / `mapProviderStatusToApiError`） |
+| `src/lib/llm.ts` | OpenAI互換LLMクライアント（非ストリーミング・SSEストリーミング） |
+| `src/lib/store.ts` | インメモリセッション/ドキュメント/メッセージストア（Supabase移行前の仮実装） |
+| `src/lib/supabase.ts` | Supabaseクライアント初期化（CRUD未実装） |
+| `src/app/api/chat/route.ts` | チャットAPI（SSEストリーミング・非ストリーミング・metaイベント対応） |
+| `src/app/api/upload/route.ts` | PDFアップロードAPI（バリデーション・セッション自動作成） |
+| `src/app/api/sessions/route.ts` | セッション一覧API（カーソルページング） |
+| `src/app/api/sessions/[id]/route.ts` | セッション詳細API（メッセージ履歴・limit/beforeページング） |
+| `src/app/api/documents/[id]/route.ts` | ドキュメント詳細API（qaEnabled / summary / pageCount 等） |
+
+### インフラ・設定
+
+| ファイル | 内容 |
+|---|---|
+| `supabase/migrations/20260507_001_init_phase1.sql` | DBスキーマ（sessions / messages / documents / document_chunks） |
+| `.env.example` | 環境変数テンプレート |
+| `tests/api_contract_smoke.sh` | API契約スモークチェックスクリプト |
+| `docs/api_contract.md` | API契約書 |
+| `docs/screen_design.md` | 画面設計メモ |
+
+### 未実装（次フェーズ）
+
+- チャットUI（Reactコンポーネント一式）
+- PDF テキスト抽出・チャンク分割
+- Supabase 永続化（現状はインメモリ）
+- citations（回答根拠）生成
 
 ---
 
@@ -27,6 +52,7 @@ LLM APIを使って、実際に使えるPDF要約・質問応答アプリを1つ
 cd phase1
 npm install
 cp .env.example .env.local
+# .env.local に OPENAI_API_KEY 等を設定
 npm run dev
 ```
 
@@ -46,14 +72,22 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 ```
 
-## Supabaseマイグレーション（追加）
+---
 
-- `phase1/supabase/migrations/20260507_001_init_phase1.sql` を追加しました。
-- 適用時は Supabase SQL Editor か CLI で実行してください。
+## Supabaseマイグレーション
 
-## テスト（現時点）
+`phase1/supabase/migrations/20260507_001_init_phase1.sql` を Supabase SQL Editor または CLI で適用してください。
 
-- `phase1/tests/api_contract_smoke.sh` でAPI契約の主要要素をスモークチェックできます。
+---
+
+## テスト
+
+```bash
+bash phase1/tests/api_contract_smoke.sh
+```
+
+API契約の主要要素（型定義・エンドポイント・エラーコード）の存在をチェックします。
+
 ---
 
 ## 運用制約
