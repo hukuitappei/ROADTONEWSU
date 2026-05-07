@@ -106,6 +106,8 @@ export type DbDocumentRow = {
   summary: string | null
   page_count: number | null
   char_count: number | null
+  qa_enabled: boolean | null
+  error_message: string | null
   created_at: string | null
   updated_at: string | null
 }
@@ -131,7 +133,7 @@ export const mapDbDocumentToDetail = (row: DbDocumentRow): DocumentDetail => ({
   sessionId: row.session_id,
   fileName: row.filename,
   status: row.status,
-  qaEnabled: row.status === 'ready',
+  qaEnabled: row.qa_enabled ?? row.status === 'ready',
   summary: row.summary,
   pageCount: row.page_count,
   charCount: row.char_count,
@@ -143,7 +145,7 @@ export const mapDbDocumentToSummary = (row: DbDocumentRow): DocumentSummary => (
   id: row.id,
   fileName: row.filename,
   status: row.status,
-  qaEnabled: row.status === 'ready',
+  qaEnabled: row.qa_enabled ?? row.status === 'ready',
   summary: row.summary,
   createdAt: toIso(row.created_at),
 })
