@@ -76,7 +76,6 @@ export async function POST(req: Request) {
     })
   }
 
-  const messageId = crypto.randomUUID()
   const createdAt = new Date().toISOString()
   const shouldStream = body.stream ?? true
 
@@ -90,9 +89,10 @@ export async function POST(req: Request) {
 
       const stream = new ReadableStream({
         async start(controller) {
-          controller.enqueue(encoder.encode(sse('start', { messageId })))
+          controller.enqueue(encoder.encode(sse('start', {})))
 
           let streamUsage: { promptTokens: number; completionTokens: number; totalTokens: number } | null = null
+          let assembledText = ''
 
           try {
             while (true) {
@@ -110,6 +110,7 @@ export async function POST(req: Request) {
                   const json = JSON.parse(payload)
                   const delta = json?.choices?.[0]?.delta?.content
                   if (delta) {
+                    assembledText += delta
                     controller.enqueue(encoder.encode(sse('token', { delta })))
                   }
                   // stream_options: { include_usage: true } で最終チャンクに usage が付く
@@ -129,7 +130,32 @@ export async function POST(req: Request) {
             if (streamUsage) {
               controller.enqueue(encoder.encode(sse('meta', { usage: streamUsage })))
             }
-            controller.enqueue(encoder.encode(sse('done', { finishReason: 'stop' })))
+
+            try {
+              const assistantMessage = await addMessage(session.id, 'assistant', assembledText)
+              controller.enqueue(
+                encoder.encode(
+                  sse('done', {
+                    messageId: assistantMessage.id,
+                    finishReason: 'stop',
+                  }),
+                ),
+              )
+            } catch (error) {
+              console.error('INTERNAL_ERROR: failed to persist assistant message', {
+                sessionId: session.id,
+                error,
+              })
+              controller.enqueue(
+                encoder.encode(
+                  sse('error', {
+                    code: 'INTERNAL_ERROR',
+                    message: 'サーバーエラーが発生しました。時間をおいて再試行してください。',
+                  }),
+                ),
+              )
+            }
+
             controller.close()
           } catch {
             controller.enqueue(
@@ -158,7 +184,7 @@ export async function POST(req: Request) {
     const assistantMessage = await addMessage(session.id, 'assistant', result.content)
 
     const response: ChatResponse = {
-      messageId: assistantMessage?.id ?? messageId,
+      messageId: assistantMessage.id,
       sessionId: body.sessionId,
       role: 'assistant',
       content: result.content,
