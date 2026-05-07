@@ -1,0 +1,3 @@
+# Reduce frequent textual conflicts in documentation.
+# union keeps both sides' added lines for markdown files.
+*.md merge=union
