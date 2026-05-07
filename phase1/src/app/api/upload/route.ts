@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { jsonError } from '@/lib/http'
+import { enqueueDocumentProcessing } from '@/lib/summary'
 import { createDocument, createSession, getSession } from '@/lib/repository'
 import { isUuid } from '@/lib/validation'
 
@@ -52,6 +53,7 @@ export async function POST(req: Request) {
   }
 
   const document = await createDocument(session.id, file.name)
+  void enqueueDocumentProcessing(document.id, file)
 
   return NextResponse.json({
     uploadId: document.id,

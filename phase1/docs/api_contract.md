@@ -388,3 +388,23 @@ data: {"finishReason":"stop"}
 ### ストリーミング方式
 
 - なし（同期レスポンス）
+
+### 非同期ジョブ仕様（Phase 1）
+
+- `POST /api/upload` 登録直後にサーバー側で文書処理ジョブを起動する。
+- `documents.status` は `processing -> ready` または `processing -> error` に遷移する。
+- ジョブ完了時に `documents` へ以下を反映する。
+  - `qaEnabled`
+  - `summary`
+  - `pageCount`
+  - `charCount`
+  - `error_message`
+
+### 上限超過時の固定メッセージ
+
+- ページ数上限（30）または文字数上限（80,000）を超える場合、Q&Aは無効化する。
+- APIが返す固定文言は以下とする。
+
+`このPDFはPhase 1のQ&A上限を超えています。要約のみ対応します。`
+
+- 上限超過時でも要約は先頭5チャンクのみを対象に実行する。

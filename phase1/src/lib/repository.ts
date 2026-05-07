@@ -62,9 +62,26 @@ export const getSessionDocuments = async (sessionId: string) => {
   if (error) throw error
   return data ?? []
 }
-export const updateDocument = async (id: string, patch: Partial<{ status: DocumentStatus; summary: string | null; page_count: number | null; char_count: number | null }>) => {
+export const updateDocument = async (
+  id: string,
+  patch: Partial<{
+    status: DocumentStatus
+    qaEnabled: boolean
+    summary: string | null
+    page_count: number | null
+    char_count: number | null
+    error_message: string | null
+  }>,
+) => {
   const supabase = createSupabaseServiceClient()
-  const { data, error } = await supabase.from('documents').update(patch).eq('id', id).select('*').maybeSingle<DbDocumentRow>()
+  const dbPatch = {
+    ...patch,
+    qa_enabled: patch.qaEnabled,
+  }
+  if ('qaEnabled' in dbPatch) {
+    delete (dbPatch as { qaEnabled?: boolean }).qaEnabled
+  }
+  const { data, error } = await supabase.from('documents').update(dbPatch).eq('id', id).select('*').maybeSingle<DbDocumentRow>()
   if (error) throw error
   return data
 }
