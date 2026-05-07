@@ -21,19 +21,26 @@ PDFをアップロードして、内容の要約と質問応答ができる生�
 | フロントエンド | Next.js (App Router) + TypeScript | バックエンドと統合しやすく、Vercelデプロイが簡単 |
 | バックエンド | Next.js API Routes | フロントと同一リポジトリで管理できる |
 | スタイリング | Tailwind CSS | 素早くUIを組める |
-| LLM | OpenAI SDK互換（切替可） | OpenAI / Claude / Ollama を環境変数で切り替え可能 |
+| LLM | OpenAI API（公式サポート） | Phase 1は1プロバイダ固定にして実装と検証を単純化する |
 | DB・ストレージ | Supabase | PostgreSQL + ファイルストレージ + 認証が一体 |
 | デプロイ | Vercel + Supabase | 無料枠で公開可能 |
 
 ### LLM切替の設計方針
 
-`openai` npm パッケージを使い、`baseURL` を環境変数で切り替えることで複数LLMに対応する。
+Phase 1の**公式サポート対象はOpenAIの1プロバイダに固定**する。
+まずはOpenAI前提でPDF要約・Q&Aの品質、エラーハンドリング、運用手順を安定化させる。
+
+`openai` npm パッケージの `baseURL` 切替機能は将来の拡張用として残せるが、
+**OpenAI互換APIはPhase 1では非公式（自己責任）扱い**とし、動作保証対象に含めない。
 
 ```
 OPENAI_API_KEY=sk-...        → OpenAI (GPT-4o等)
-OPENAI_BASE_URL=http://localhost:11434/v1  → Ollama（ローカルLLM）
-OPENAI_BASE_URL=https://api.anthropic.com/v1  → Claude互換エンドポイント
+OPENAI_BASE_URL=https://api.openai.com/v1
 ```
+
+> 補足: `OPENAI_BASE_URL` をOpenAI以外へ向ける構成（例: OllamaなどのOpenAI互換API）は、
+> エンドポイント仕様・パラメータ・レスポンス形式の差分で不整合が起きる可能性があるため、
+> Phase 1の公式サポート対象外。
 
 ---
 

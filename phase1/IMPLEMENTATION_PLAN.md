@@ -17,7 +17,7 @@ PDF要約・質問応答アプリ
 
 | # | タスク | 完了 |
 |---|---|---|
-| 1 | 技術スタック確定（Next.js + Supabase + OpenAI互換SDK） | ✅ |
+| 1 | 技術スタック確定（Next.js + Supabase + OpenAI API） | ✅ |
 | 2 | GitHubリポジトリ作成・初期コミット | ✅ |
 | 3 | Next.js プロジェクト初期化（TypeScript + Tailwind + App Router） | [ ] |
 | 4 | 環境変数ファイル（.env.local）の設定 | [ ] |
@@ -28,7 +28,7 @@ PDF要約・質問応答アプリ
 ### 環境変数テンプレート（.env.local）
 
 ```env
-# LLM設定（OpenAI互換）
+# LLM設定（Phase 1公式サポート: OpenAI）
 OPENAI_API_KEY=your-api-key-here
 OPENAI_BASE_URL=https://api.openai.com/v1
 OPENAI_MODEL=gpt-4o-mini
@@ -39,7 +39,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 ```
 
-### Ollamaでローカル動作させる場合
+### OpenAI互換APIを試す場合（公式サポート対象外）
 
 ```env
 OPENAI_API_KEY=ollama
