@@ -83,9 +83,49 @@ create table messages (
   role text check (role in ('user', 'assistant')),
   content text,
   tokens_used int,
+  -- 回答根拠（どのチャンクを参照したか）
+  -- どちらかを採用：
+  -- 1) citations jsonb: [{chunk_id, page_start, page_end, quote}] のような柔軟な構造
+  citations jsonb,
+  -- 2) source_chunk_ids uuid[]: 参照チャンクIDのみを軽量保存
+  source_chunk_ids uuid[],
   created_at timestamptz default now()
 );
+
+-- 文書メタ情報・抽出結果
+create table documents (
+  id uuid primary key default gen_random_uuid(),
+  session_id uuid references sessions(id) on delete cascade,
+  filename text not null,
+  storage_path text not null,
+  extracted_text text,
+  summary text,
+  status text not null default 'uploaded' check (status in ('uploaded', 'processing', 'ready', 'error')),
+  error_message text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+-- 文書チャンク（RAG/根拠表示の最小単位）
+create table document_chunks (
+  id uuid primary key default gen_random_uuid(),
+  document_id uuid not null references documents(id) on delete cascade,
+  chunk_index int not null,
+  content text not null,
+  page_start int,
+  page_end int,
+  created_at timestamptz default now(),
+  unique (document_id, chunk_index)
+);
 ```
+
+### 根拠表示UIとのフィールド対応
+
+- チャット画面のAI回答テキスト本体は `messages.content` を表示。
+- 「根拠（出典）」表示は以下のいずれかで実装：
+  - `messages.citations` をパースして、`page_start`〜`page_end` と `quote` を表示。
+  - `messages.source_chunk_ids` から `document_chunks` を引き、`content` と `page_start`/`page_end` を表示。
+- PDF名や文書単位の情報は `documents.filename` / `documents.summary` を利用。
 
 ---
 
