@@ -24,6 +24,13 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   const limitParam = url.searchParams.get('limit')
   const before = url.searchParams.get('before')
 
+  if (before && !isUuid(before)) {
+    return jsonError('BAD_REQUEST', '入力内容に誤りがあります。内容を確認してください。', 400, {
+      field: 'before',
+      reason: 'invalid_format',
+    })
+  }
+
   const limit = limitParam ? Number(limitParam) : 50
   if (!Number.isFinite(limit) || limit < 1 || limit > 200) {
     return jsonError('BAD_REQUEST', '入力内容に誤りがあります。内容を確認してください。', 400, {
