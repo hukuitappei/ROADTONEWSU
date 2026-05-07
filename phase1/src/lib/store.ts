@@ -1,3 +1,5 @@
+import type { DocumentStatus } from '@/types/api'
+
 export type Session = {
   id: string
   title: string
@@ -18,8 +20,13 @@ export type Document = {
   sessionId: string
   fileName: string
   fileSize: number
-  status: 'uploaded' | 'processing' | 'ready' | 'error'
+  status: DocumentStatus
+  qaEnabled: boolean
+  summary: string | null
+  pageCount: number | null
+  charCount: number | null
   createdAt: string
+  updatedAt: string
 }
 
 const sessions = new Map<string, Session>()
@@ -76,22 +83,51 @@ export const addMessage = (sessionId: string, role: 'user' | 'assistant', conten
   return item
 }
 
-export const getMessages = (sessionId: string) => messages.get(sessionId) ?? []
+export const getMessages = (sessionId: string, limit = 50, before?: string | null) => {
+  const list = messages.get(sessionId) ?? []
+  const beforeIndex = before ? list.findIndex((m) => m.id === before) : -1
+  const end = beforeIndex === -1 ? list.length : beforeIndex
+  const start = Math.max(0, end - limit)
+
+  return {
+    items: list.slice(start, end),
+    hasMore: start > 0,
+  }
+}
 
 export const createDocument = (sessionId: string, fileName: string, fileSize: number): Document => {
+  const now = new Date().toISOString()
   const doc: Document = {
     id: crypto.randomUUID(),
     sessionId,
     fileName,
     fileSize,
     status: 'processing',
-    createdAt: new Date().toISOString(),
+    qaEnabled: false,
+    summary: null,
+    pageCount: null,
+    charCount: null,
+    createdAt: now,
+    updatedAt: now,
   }
 
   documents.set(doc.id, doc)
   return doc
 }
 
+export const updateDocument = (
+  id: string,
+  patch: Partial<Omit<Document, 'id' | 'sessionId' | 'createdAt'>>,
+): Document | null => {
+  const doc = documents.get(id)
+  if (!doc) return null
+
+  const updated: Document = { ...doc, ...patch, updatedAt: new Date().toISOString() }
+  documents.set(id, updated)
+  return updated
+}
+
 export const getDocument = (id: string) => documents.get(id) ?? null
 
-export const getSessionDocuments = (sessionId: string) => [...documents.values()].filter((d) => d.sessionId === sessionId)
+export const getSessionDocuments = (sessionId: string) =>
+  [...documents.values()].filter((d) => d.sessionId === sessionId)
