@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { jsonError, mapProviderStatusToApiError } from '@/lib/http'
 import { generateAnswer, streamAnswer } from '@/lib/llm'
 import { addMessage, getSession } from '@/lib/store'
+import { isUuid } from '@/lib/validation'
 import type { ChatRequest, ChatResponse } from '@/types/api'
 
 const encoder = new TextEncoder()
@@ -21,12 +22,20 @@ const validateBody = (body: ChatRequest | null) => {
     return { ok: false as const, field: 'sessionId' }
   }
 
+  if (!isUuid(body.sessionId)) {
+    return { ok: false as const, field: 'sessionId_format' }
+  }
+
   if (!body?.message?.trim()) {
     return { ok: false as const, field: 'message' }
   }
 
   if (body.message.length > 10_000) {
     return { ok: false as const, field: 'message_too_long' }
+  }
+
+  if (body.documentIds?.some((id) => !isUuid(id))) {
+    return { ok: false as const, field: 'documentIds_format' }
   }
 
   return { ok: true as const }
@@ -44,6 +53,13 @@ export async function POST(req: Request) {
   if (!validated.ok) {
     if (validated.field === 'message_too_long') {
       return jsonError('PAYLOAD_TOO_LARGE', '入力サイズが上限を超えています。短くするか対象を絞ってください。', 413)
+    }
+
+    if (validated.field === 'sessionId_format' || validated.field === 'documentIds_format') {
+      return jsonError('BAD_REQUEST', '入力内容に誤りがあります。内容を確認してください。', 400, {
+        field: validated.field === 'sessionId_format' ? 'sessionId' : 'documentIds',
+        reason: 'invalid_format',
+      })
     }
 
     return jsonError('BAD_REQUEST', '入力内容に誤りがあります。内容を確認してください。', 400, {
