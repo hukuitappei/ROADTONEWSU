@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { jsonError } from '@/lib/http'
 import { createDocument, createSession, getSession } from '@/lib/store'
+import { isUuid } from '@/lib/validation'
 
 const MAX_PDF_BYTES = 10 * 1024 * 1024
 
@@ -13,7 +14,7 @@ export async function POST(req: Request) {
   }
 
   const file = form.get('file')
-  const sessionId = form.get('sessionId')?.toString()
+  const sessionId = form.get('sessionId')?.toString().trim()
 
   if (!(file instanceof File)) {
     return jsonError('BAD_REQUEST', '入力内容に誤りがあります。内容を確認してください。', 400, {
@@ -32,6 +33,13 @@ export async function POST(req: Request) {
   if (file.size > MAX_PDF_BYTES) {
     return jsonError('PAYLOAD_TOO_LARGE', 'ファイルサイズが上限を超えています', 413, {
       maxBytes: MAX_PDF_BYTES,
+    })
+  }
+
+  if (sessionId && !isUuid(sessionId)) {
+    return jsonError('BAD_REQUEST', '入力内容に誤りがあります。内容を確認してください。', 400, {
+      field: 'sessionId',
+      reason: 'invalid_format',
     })
   }
 

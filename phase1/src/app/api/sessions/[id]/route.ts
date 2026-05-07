@@ -1,9 +1,17 @@
 import { NextResponse } from 'next/server'
 import { jsonError } from '@/lib/http'
 import { getMessages, getSession, getSessionDocuments } from '@/lib/store'
+import { isUuid } from '@/lib/validation'
 import type { SessionDetailResponse } from '@/types/api'
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
+  if (!isUuid(params.id)) {
+    return jsonError('BAD_REQUEST', '入力内容に誤りがあります。内容を確認してください。', 400, {
+      field: 'id',
+      reason: 'invalid_format',
+    })
+  }
+
   const session = getSession(params.id)
   if (!session) {
     return jsonError('NOT_FOUND', '対象のセッションが見つかりません。', 404, {

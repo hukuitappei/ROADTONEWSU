@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { jsonError } from '@/lib/http'
 import { listSessions } from '@/lib/store'
+import { isUuid } from '@/lib/validation'
 import type { SessionsListResponse } from '@/types/api'
 
 export async function GET(req: Request) {
@@ -13,6 +14,13 @@ export async function GET(req: Request) {
     return jsonError('BAD_REQUEST', '入力内容に誤りがあります。内容を確認してください。', 400, {
       field: 'limit',
       reason: 'invalid_range',
+    })
+  }
+
+  if (cursor && !isUuid(cursor)) {
+    return jsonError('BAD_REQUEST', '入力内容に誤りがあります。内容を確認してください。', 400, {
+      field: 'cursor',
+      reason: 'invalid_format',
     })
   }
 
