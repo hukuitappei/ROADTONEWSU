@@ -58,13 +58,15 @@ OPENAI_MODEL=llama3
 
 | # | タスク | 完了 |
 |---|---|---|
-| 1 | `/api/chat` エンドポイント作成 | [ ] |
-| 2 | LLMサービス層（`src/lib/llm.ts`）作成 | [ ] |
-| 3 | チャットUIの基本実装 | [ ] |
-| 4 | Streaming対応（逐次表示） | [ ] |
-| 5 | Supabaseのテーブル設計・マイグレーション | [ ] |
-| 6 | 入力・出力履歴のDB保存 | [ ] |
-| 7 | エラー処理（API失敗・空入力・タイムアウト） | [ ] |
+| 1 | API契約書作成（`docs/api_contract.md`） | [x] |
+| 2 | API契約に基づく実装（`/api/upload` `/api/chat` `/api/sessions` `/api/sessions/[id]`） | [ ] |
+| 3 | `/api/chat` エンドポイント作成 | [ ] |
+| 4 | LLMサービス層（`src/lib/llm.ts`）作成 | [ ] |
+| 5 | チャットUIの基本実装 | [ ] |
+| 6 | Streaming対応（逐次表示） | [ ] |
+| 7 | Supabaseのテーブル設計・マイグレーション | [ ] |
+| 8 | 入力・出力履歴のDB保存 | [ ] |
+| 9 | エラー処理（API失敗・空入力・タイムアウト） | [ ] |
 
 ### Supabaseテーブル設計
 
