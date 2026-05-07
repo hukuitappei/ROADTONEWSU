@@ -1,3 +1,4 @@
+import { withUserRateLimit } from '@/lib/rate-limit'
 import { NextResponse } from 'next/server'
 import { jsonError } from '@/lib/http'
 import { listSessions } from '@/lib/repository'
@@ -5,6 +6,7 @@ import { isUuid } from '@/lib/validation'
 import { mapDbSessionToSessionDetail, type SessionsListResponse } from '@/types/api'
 
 export async function GET(req: Request) {
+  return withUserRateLimit(req, async () => {
   const url = new URL(req.url)
   const limitParam = url.searchParams.get('limit')
   const cursor = url.searchParams.get('cursor')
@@ -32,4 +34,6 @@ export async function GET(req: Request) {
   }
 
   return NextResponse.json(response)
+}
+  })
 }

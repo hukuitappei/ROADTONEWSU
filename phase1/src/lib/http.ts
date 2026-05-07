@@ -29,3 +29,25 @@ export const mapProviderStatusToApiError = (status: number) => {
     status: 500,
   }
 }
+
+type ProviderErrorCause = { status?: number; code?: string }
+
+export const mapProviderErrorToApiError = (cause?: ProviderErrorCause) => {
+  if (typeof cause?.status === 'number') {
+    return mapProviderStatusToApiError(cause.status)
+  }
+
+  if (cause?.code === 'provider_network_error' || cause?.code === 'provider_unavailable') {
+    return {
+      code: 'INTERNAL_ERROR' as const,
+      message: 'サーバーエラーが発生しました。時間をおいて再試行してください。',
+      status: 500,
+    }
+  }
+
+  return {
+    code: 'INTERNAL_ERROR' as const,
+    message: 'サーバーエラーが発生しました。時間をおいて再試行してください。',
+    status: 500,
+  }
+}

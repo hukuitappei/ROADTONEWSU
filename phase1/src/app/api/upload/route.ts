@@ -1,3 +1,4 @@
+import { withUserRateLimit } from '@/lib/rate-limit'
 import { NextResponse } from 'next/server'
 import { jsonError } from '@/lib/http'
 import { enqueueDocumentProcessing } from '@/lib/summary'
@@ -7,6 +8,7 @@ import { isUuid } from '@/lib/validation'
 const MAX_PDF_BYTES = 10 * 1024 * 1024
 
 export async function POST(req: Request) {
+  return withUserRateLimit(req, async () => {
   let form: FormData
   try {
     form = await req.formData()
@@ -62,5 +64,7 @@ export async function POST(req: Request) {
     fileSize: file.size,
     status: document.status,
     createdAt: document.created_at ?? new Date().toISOString(),
+  })
+}
   })
 }
