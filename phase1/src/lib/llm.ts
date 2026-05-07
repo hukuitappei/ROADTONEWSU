@@ -1,5 +1,7 @@
 const DEFAULT_BASE_URL = 'https://api.openai.com/v1'
 const DEFAULT_MODEL = 'gpt-4o-mini'
+const REQUEST_TIMEOUT_MS = 30_000
+const RETRY_DELAYS_MS = [1000, 2000, 4000] as const
 
 type GenerateAnswerInput = {
   prompt: string
@@ -15,6 +17,13 @@ export type ChatCompletion = {
   }
 }
 
+type ProviderErrorCode = 'provider_rate_limited' | 'provider_internal_error' | 'provider_unavailable' | 'provider_network_error'
+
+type ProviderErrorCause = {
+  status?: number
+  code: ProviderErrorCode
+}
+
 const getClientConfig = () => {
   const apiKey = process.env.OPENAI_API_KEY
   const baseUrl = process.env.OPENAI_BASE_URL ?? DEFAULT_BASE_URL
@@ -27,6 +36,80 @@ const getClientConfig = () => {
   return { apiKey, baseUrl, model }
 }
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+const shouldRetry = (status?: number, isNetworkError?: boolean) => {
+  if (isNetworkError) return true
+  if (status === 429) return true
+  return typeof status === 'number' && status >= 500 && status <= 599
+}
+
+const classifyProviderErrorCode = (status?: number, isNetworkError?: boolean): ProviderErrorCode => {
+  if (isNetworkError) return 'provider_network_error'
+  if (status === 429) return 'provider_rate_limited'
+  if (typeof status === 'number' && status >= 500 && status <= 599) return 'provider_unavailable'
+  return 'provider_internal_error'
+}
+
+const toProviderError = (status?: number, isNetworkError?: boolean) => {
+  const error = new Error('provider_error')
+  ;(error as Error & { cause?: ProviderErrorCause }).cause = {
+    status,
+    code: classifyProviderErrorCode(status, isNetworkError),
+  }
+  return error
+}
+
+const withTimeoutSignal = (signal?: AbortSignal) => {
+  const timeoutController = new AbortController()
+  const timeoutId = setTimeout(() => timeoutController.abort(), REQUEST_TIMEOUT_MS)
+
+  const controller = new AbortController()
+  const onAbort = () => controller.abort()
+
+  signal?.addEventListener('abort', onAbort)
+  timeoutController.signal.addEventListener('abort', onAbort)
+
+  return {
+    signal: controller.signal,
+    cleanup: () => {
+      clearTimeout(timeoutId)
+      signal?.removeEventListener('abort', onAbort)
+      timeoutController.signal.removeEventListener('abort', onAbort)
+    },
+  }
+}
+
+const fetchWithRetry = async (url: string, init: RequestInit) => {
+  for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt += 1) {
+    const { signal, cleanup } = withTimeoutSignal(init.signal)
+
+    try {
+      const response = await fetch(url, { ...init, signal })
+      if (!response.ok && shouldRetry(response.status) && attempt < RETRY_DELAYS_MS.length) {
+        await sleep(RETRY_DELAYS_MS[attempt])
+        continue
+      }
+
+      return response
+    } catch (error) {
+      const isAbortError = error instanceof Error && error.name === 'AbortError'
+      const isNetworkError = error instanceof TypeError || isAbortError
+
+      if (shouldRetry(undefined, isNetworkError) && attempt < RETRY_DELAYS_MS.length) {
+        await sleep(RETRY_DELAYS_MS[attempt])
+        continue
+      }
+
+      throw toProviderError(undefined, isNetworkError)
+    } finally {
+      cleanup()
+    }
+  }
+
+  throw toProviderError(undefined, true)
+}
+
 export async function generateAnswer({ prompt, signal }: GenerateAnswerInput): Promise<ChatCompletion> {
   if (!prompt.trim()) {
     throw new Error('empty_prompt')
@@ -34,7 +117,7 @@ export async function generateAnswer({ prompt, signal }: GenerateAnswerInput): P
 
   const { apiKey, baseUrl, model } = getClientConfig()
 
-  const res = await fetch(`${baseUrl}/chat/completions`, {
+  const res = await fetchWithRetry(`${baseUrl}/chat/completions`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${apiKey}`,
@@ -56,9 +139,7 @@ export async function generateAnswer({ prompt, signal }: GenerateAnswerInput): P
   })
 
   if (!res.ok) {
-    const error = new Error('provider_error')
-    ;(error as Error & { cause?: unknown }).cause = { status: res.status }
-    throw error
+    throw toProviderError(res.status)
   }
 
   const data = await res.json()
@@ -80,7 +161,7 @@ export async function streamAnswer(prompt: string, signal?: AbortSignal) {
   }
 
   const { apiKey, baseUrl, model } = getClientConfig()
-  const res = await fetch(`${baseUrl}/chat/completions`, {
+  const res = await fetchWithRetry(`${baseUrl}/chat/completions`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${apiKey}`,
@@ -103,9 +184,7 @@ export async function streamAnswer(prompt: string, signal?: AbortSignal) {
   })
 
   if (!res.ok || !res.body) {
-    const error = new Error('provider_error')
-    ;(error as Error & { cause?: unknown }).cause = { status: res.status }
-    throw error
+    throw toProviderError(res.status)
   }
 
   return res.body

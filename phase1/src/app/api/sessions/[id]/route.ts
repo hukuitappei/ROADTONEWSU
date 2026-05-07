@@ -1,3 +1,4 @@
+import { withUserRateLimit } from '@/lib/rate-limit'
 import { NextResponse } from 'next/server'
 import { jsonError } from '@/lib/http'
 import { getMessages, getSession, getSessionDocuments } from '@/lib/repository'
@@ -5,6 +6,7 @@ import { isUuid } from '@/lib/validation'
 import { mapDbDocumentToSummary, mapDbMessageToMessageItem, mapDbSessionToSessionDetail, type SessionDetailResponse } from '@/types/api'
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
+  return withUserRateLimit(req, async () => {
   if (!isUuid(params.id)) {
     return jsonError('BAD_REQUEST', '入力内容に誤りがあります。内容を確認してください。', 400, {
       field: 'id',
@@ -50,4 +52,6 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   }
 
   return NextResponse.json(response)
+}
+  })
 }

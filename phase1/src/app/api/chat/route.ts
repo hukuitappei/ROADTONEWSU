@@ -1,5 +1,6 @@
+import { withUserRateLimit } from '@/lib/rate-limit'
 import { NextResponse } from 'next/server'
-import { jsonError, mapProviderStatusToApiError } from '@/lib/http'
+import { jsonError, mapProviderErrorToApiError } from '@/lib/http'
 import { generateAnswer, streamAnswer } from '@/lib/llm'
 import { addMessage, getSession } from '@/lib/repository'
 import { isUuid } from '@/lib/validation'
@@ -42,6 +43,7 @@ const validateBody = (body: ChatRequest | null) => {
 }
 
 export async function POST(req: Request) {
+  return withUserRateLimit(req, async () => {
   const parsed = await parseBody(req)
   if (parsed.invalidJson) {
     return jsonError('BAD_REQUEST', 'リクエストが不正です', 400, { field: 'body', reason: 'invalid_json' })
@@ -195,12 +197,9 @@ export async function POST(req: Request) {
 
     return NextResponse.json(response)
   } catch (error) {
-    const status = (error as Error & { cause?: { status?: number } }).cause?.status
-    if (typeof status === 'number') {
-      const mapped = mapProviderStatusToApiError(status)
-      return jsonError(mapped.code, mapped.message, mapped.status)
-    }
-
-    return jsonError('INTERNAL_ERROR', 'サーバーエラーが発生しました。時間をおいて再試行してください。', 500)
+    const mapped = mapProviderErrorToApiError((error as Error & { cause?: { status?: number; code?: string } }).cause)
+    return jsonError(mapped.code, mapped.message, mapped.status)
   }
+}
+  })
 }
