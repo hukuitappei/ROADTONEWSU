@@ -76,6 +76,8 @@ export async function POST(req: Request) {
         async start(controller) {
           controller.enqueue(encoder.encode(sse('start', { messageId })))
 
+          let streamUsage: { promptTokens: number; completionTokens: number; totalTokens: number } | null = null
+
           try {
             while (true) {
               const { value, done } = await reader.read()
@@ -94,12 +96,23 @@ export async function POST(req: Request) {
                   if (delta) {
                     controller.enqueue(encoder.encode(sse('token', { delta })))
                   }
+                  // stream_options: { include_usage: true } で最終チャンクに usage が付く
+                  if (json?.usage) {
+                    streamUsage = {
+                      promptTokens: json.usage.prompt_tokens,
+                      completionTokens: json.usage.completion_tokens,
+                      totalTokens: json.usage.total_tokens,
+                    }
+                  }
                 } catch {
                   // ignore partial JSON chunks
                 }
               }
             }
 
+            if (streamUsage) {
+              controller.enqueue(encoder.encode(sse('meta', { usage: streamUsage })))
+            }
             controller.enqueue(encoder.encode(sse('done', { finishReason: 'stop' })))
             controller.close()
           } catch {

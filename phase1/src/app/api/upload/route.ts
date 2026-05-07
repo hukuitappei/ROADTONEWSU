@@ -5,7 +5,13 @@ import { createDocument, createSession, getSession } from '@/lib/store'
 const MAX_PDF_BYTES = 10 * 1024 * 1024
 
 export async function POST(req: Request) {
-  const form = await req.formData()
+  let form: FormData
+  try {
+    form = await req.formData()
+  } catch {
+    return jsonError('BAD_REQUEST', 'リクエストが不正です', 400, { field: 'body', reason: 'invalid_form_data' })
+  }
+
   const file = form.get('file')
   const sessionId = form.get('sessionId')?.toString()
 

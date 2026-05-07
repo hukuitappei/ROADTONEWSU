@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { jsonError } from '@/lib/http'
 import { listSessions } from '@/lib/store'
+import type { SessionsListResponse } from '@/types/api'
 
 export async function GET(req: Request) {
   const url = new URL(req.url)
@@ -15,6 +16,17 @@ export async function GET(req: Request) {
     })
   }
 
-  const data = listSessions(limit, cursor)
-  return NextResponse.json(data)
+  const raw = listSessions(limit, cursor)
+
+  const response: SessionsListResponse = {
+    items: raw.items.map((s) => ({
+      id: s.id,
+      title: s.title,
+      lastMessageAt: s.lastMessageAt,
+      createdAt: s.createdAt,
+    })),
+    nextCursor: raw.nextCursor,
+  }
+
+  return NextResponse.json(response)
 }

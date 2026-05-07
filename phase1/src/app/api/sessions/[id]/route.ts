@@ -1,21 +1,54 @@
 import { NextResponse } from 'next/server'
 import { jsonError } from '@/lib/http'
 import { getMessages, getSession, getSessionDocuments } from '@/lib/store'
+import type { SessionDetailResponse } from '@/types/api'
 
-export async function GET(_: Request, { params }: { params: { id: string } }) {
+export async function GET(req: Request, { params }: { params: { id: string } }) {
   const session = getSession(params.id)
   if (!session) {
-    return jsonError('BAD_REQUEST', '入力内容に誤りがあります。内容を確認してください。', 400, {
+    return jsonError('NOT_FOUND', '対象のセッションが見つかりません。', 404, {
       field: 'id',
       reason: 'not_found',
     })
   }
 
-  return NextResponse.json({
-    id: session.id,
-    title: session.title,
-    createdAt: session.createdAt,
-    documents: getSessionDocuments(session.id),
-    messages: getMessages(session.id),
-  })
+  const url = new URL(req.url)
+  const limitParam = url.searchParams.get('limit')
+  const before = url.searchParams.get('before')
+
+  const limit = limitParam ? Number(limitParam) : 50
+  if (!Number.isFinite(limit) || limit < 1 || limit > 200) {
+    return jsonError('BAD_REQUEST', '入力内容に誤りがあります。内容を確認してください。', 400, {
+      field: 'limit',
+      reason: 'invalid_range',
+    })
+  }
+
+  const { items: msgs, hasMore } = getMessages(session.id, limit, before)
+  const docs = getSessionDocuments(session.id)
+
+  const response: SessionDetailResponse = {
+    session: {
+      id: session.id,
+      title: session.title,
+      createdAt: session.createdAt,
+    },
+    documents: docs.map((doc) => ({
+      id: doc.id,
+      fileName: doc.fileName,
+      status: doc.status,
+      qaEnabled: doc.qaEnabled,
+      summary: doc.summary,
+      createdAt: doc.createdAt,
+    })),
+    messages: msgs.map((msg) => ({
+      id: msg.id,
+      role: msg.role,
+      content: msg.content,
+      createdAt: msg.createdAt,
+    })),
+    hasMore,
+  }
+
+  return NextResponse.json(response)
 }
