@@ -58,7 +58,7 @@ OPENAI_MODEL=llama3
 
 | # | タスク | 完了 |
 |---|---|---|
-| 1 | API契約書作成（`docs/api_contract.md`） | [x] |
+| 1 | API契約書作成（`docs/api_contract.md`） | ✅ |
 | 2 | API契約に基づく実装（`/api/upload` `/api/chat` `/api/sessions` `/api/sessions/[id]`） | [ ] |
 | 3 | `/api/chat` エンドポイント作成 | [ ] |
 | 4 | LLMサービス層（`src/lib/llm.ts`）作成 | [ ] |
@@ -119,6 +119,19 @@ create table document_chunks (
   created_at timestamptz default now(),
   unique (document_id, chunk_index)
 );
+
+-- documents.updated_at 自動更新トリガー
+create or replace function update_updated_at()
+returns trigger as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$ language plpgsql;
+
+create trigger documents_updated_at
+  before update on documents
+  for each row execute function update_updated_at();
 ```
 
 ### 根拠表示UIとのフィールド対応

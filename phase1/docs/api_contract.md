@@ -37,10 +37,25 @@
 
 PDFを受け取り、テキスト抽出・要約ジョブを開始する。
 
+### ファイル制約
+
+| 項目 | 上限 |
+|---|---|
+| ファイルサイズ | 10MB（10,485,760 バイト） |
+| ページ数 | 30ページ |
+| 抽出テキスト | 80,000文字（UTF-8） |
+| ファイル形式 | `application/pdf` のみ |
+
+### セッション自動作成ルール
+
+- `sessionId` を省略した場合、バックエンドが **新しいセッションを自動作成** して返す。
+- 自動作成されたセッションの `title` は `"{ファイル名} の要約"` 形式で設定する（例: `"sample.pdf の要約"`）。
+- `sessionId` を指定した場合は、既存セッションにドキュメントを追加する。指定IDが存在しない場合は 400 `BAD_REQUEST` を返す。
+
 ### リクエスト（multipart/form-data）
 
 - `file` (required): PDFファイル（`application/pdf`）
-- `sessionId` (optional): 既存セッションID（UUID）
+- `sessionId` (optional): 既存セッションID（UUID）。省略時は新規セッション自動作成。
 
 #### 例
 
@@ -235,9 +250,68 @@ data: {"finishReason":"stop"}
 
 ---
 
-## 4) `GET /api/sessions/[id]`
+## 4) `GET /api/documents/[id]`
 
-特定セッションの詳細（メタ情報 + メッセージ履歴）を取得する。
+アップロード済みドキュメントの処理状態と詳細を取得する。
+アップロード後に処理完了をポーリングするために使用する。
+
+### リクエスト
+
+- Path Parameter: `id`（UUID）
+
+#### 例
+
+`GET /api/documents/1f8b3f26-4b08-4e9f-b7d2-f2f3c5c4e7a1`
+
+### 正常レスポンス例（200）
+
+```json
+{
+  "document": {
+    "id": "1f8b3f26-4b08-4e9f-b7d2-f2f3c5c4e7a1",
+    "sessionId": "6a8d8f0d-9d74-4ef1-8f92-4d7e0b7f0f78",
+    "fileName": "sample.pdf",
+    "status": "ready",
+    "qaEnabled": true,
+    "summary": "この文書は○○について述べており...",
+    "pageCount": 12,
+    "charCount": 24800,
+    "createdAt": "2026-05-07T12:34:56Z",
+    "updatedAt": "2026-05-07T12:35:10Z"
+  }
+}
+```
+
+### `status` フィールド定義
+
+| 値 | 意味 |
+|---|---|
+| `uploaded` | アップロード済み、処理待ち |
+| `processing` | テキスト抽出・要約処理中 |
+| `ready` | 処理完了、Q&A・要約利用可能 |
+| `error` | 処理失敗 |
+
+### `qaEnabled` フィールド定義
+
+- `true`: ページ数・文字数がPhase 1上限内のためQ&A可能
+- `false`: 上限超過のためQ&A無効（要約のみ可能）
+
+### 主要エラーレスポンス
+
+- 400 `BAD_REQUEST`（id形式不正）
+- 404 `NOT_FOUND`（対象ドキュメントが存在しない）
+- 500 `INTERNAL_ERROR`（DB取得失敗）
+
+### ストリーミング方式
+
+- なし（同期レスポンス）
+
+---
+
+## 5) `GET /api/sessions/[id]`
+
+特定セッションの詳細（メタ情報 + ドキュメント一覧 + メッセージ履歴）を取得する。
+チャット画面の初期表示でこのエンドポイントを呼び出し、`documents[].qaEnabled` によりQ&A入力の有効/無効を判断する。
 
 ### リクエスト
 
@@ -259,6 +333,16 @@ data: {"finishReason":"stop"}
     "title": "sample.pdf の要約",
     "createdAt": "2026-05-07T12:00:00Z"
   },
+  "documents": [
+    {
+      "id": "1f8b3f26-4b08-4e9f-b7d2-f2f3c5c4e7a1",
+      "fileName": "sample.pdf",
+      "status": "ready",
+      "qaEnabled": true,
+      "summary": "この文書は○○について述べており...",
+      "createdAt": "2026-05-07T12:34:56Z"
+    }
+  ],
   "messages": [
     {
       "id": "9ac7f0cf-6a44-4a0f-8e7c-565e6f2f41e9",
