@@ -86,11 +86,9 @@ create table messages (
   content text,
   tokens_used int,
   -- 回答根拠（どのチャンクを参照したか）
-  -- どちらかを採用：
-  -- 1) citations jsonb: [{chunk_id, page_start, page_end, quote}] のような柔軟な構造
+  -- Phase 1採用方式: citations jsonb を正とする
+  -- 形式: [{chunk_id, page_start, page_end, quote}]
   citations jsonb,
-  -- 2) source_chunk_ids uuid[]: 参照チャンクIDのみを軽量保存
-  source_chunk_ids uuid[],
   created_at timestamptz default now()
 );
 
@@ -124,9 +122,8 @@ create table document_chunks (
 ### 根拠表示UIとのフィールド対応
 
 - チャット画面のAI回答テキスト本体は `messages.content` を表示。
-- 「根拠（出典）」表示は以下のいずれかで実装：
-  - `messages.citations` をパースして、`page_start`〜`page_end` と `quote` を表示。
-  - `messages.source_chunk_ids` から `document_chunks` を引き、`content` と `page_start`/`page_end` を表示。
+- 「根拠（出典）」表示は **`messages.citations` をパースする方式に固定**。
+  - `page_start`〜`page_end` と `quote` を表示。
 - PDF名や文書単位の情報は `documents.filename` / `documents.summary` を利用。
 
 ---

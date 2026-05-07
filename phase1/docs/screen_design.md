@@ -101,20 +101,14 @@ AI: PDFの3ページ目によると、〇〇とは...
 - p.8 「......（該当箇所の抜粋）......」
 ```
 
-### 対応するDBフィールド
+### 対応するDBフィールド（Phase 1採用方式）
 
 - AI回答本文: `messages.content`
-- 根拠メタ情報（推奨）: `messages.citations`（JSON）
+- 根拠メタ情報（採用）: `messages.citations`（JSON）
   - 例: `[{ "chunk_id": "...", "page_start": 3, "page_end": 4, "quote": "..." }]`
-- 根拠参照ID（代替）: `messages.source_chunk_ids`（UUID配列）
-  - この場合は `document_chunks` を追加取得して表示:
-    - `document_chunks.content`
-    - `document_chunks.page_start`
-    - `document_chunks.page_end`
 - 文書名表示（ヘッダー）: `documents.filename`
 
 ### 実装メモ
 
-- UIの自由度を優先するなら `citations`（JSON）を第一候補。
-- 正規化と再利用性を優先するなら `source_chunk_ids` + `document_chunks` を採用。
-- 初期実装では両方カラムを持たせ、運用でどちらかに寄せる方針でもよい。
+- Phase 1では `citations`（JSON）を唯一の根拠表示データソースとする。
+- 画面側は `citations` を直接パースし、`page_start`/`page_end`/`quote` を表示する。
