@@ -3,9 +3,32 @@ import { NextResponse } from 'next/server'
 import { jsonError, mapProviderErrorToApiError } from '@/lib/http'
 import { requireUserId } from '@/lib/auth'
 import { generateAnswer, streamAnswer } from '@/lib/llm'
-import { addMessage, getSession } from '@/lib/repository'
+import { addMessage, getDocumentsByIds, getSession } from '@/lib/repository'
 import { isUuid } from '@/lib/validation'
 import type { ChatRequest, ChatResponse } from '@/types/api'
+
+const MAX_CONTEXT_DOCS = 5
+const NO_ANSWER_MESSAGE = 'PDFの内容からは判断できません（根拠不足または関連箇所なし）。'
+
+const buildContext = async (userId: string, documentIds: string[] | undefined) => {
+  const ids = (documentIds ?? []).slice(0, MAX_CONTEXT_DOCS)
+  const docs = await getDocumentsByIds(userId, ids)
+  const readyDocs = docs.filter((doc: { status: string; qa_enabled: boolean | null }) => doc.status === 'ready' && Boolean(doc.qa_enabled))
+
+  const context = readyDocs
+    .map((doc) => `Document ${doc.id} (${doc.filename})\n${doc.summary ?? ''}`)
+    .filter((v: string) => v.trim().length > 0)
+    .join('\n\n')
+
+  const citations = readyDocs.map((doc: { id: string; page_count: number | null; summary: string | null }) => ({
+    chunkId: `${doc.id}:summary`,
+    pageStart: 1,
+    pageEnd: doc.page_count ?? 1,
+    quote: (doc.summary ?? '').slice(0, 120),
+  }))
+
+  return { context, citations, qaBlocked: ids.length > 0 && readyDocs.length === 0 }
+}
 
 const encoder = new TextEncoder()
 
@@ -72,10 +95,11 @@ export async function POST(req: Request) {
       reason: 'required',
     })
   }
+  const requestBody = body as ChatRequest
 
   let session
   try {
-    session = await getSession(body.sessionId, auth.userId)
+    session = await getSession(requestBody.sessionId, auth.userId)
   } catch {
     return jsonError('INTERNAL_ERROR', 'サーバーエラーが発生しました。時間をおいて再試行してください。', 500)
   }
@@ -90,14 +114,29 @@ export async function POST(req: Request) {
   const shouldStream = body.stream ?? true
 
   try {
-    await addMessage(session.id, auth.userId, 'user', body.message)
+    await addMessage(session.id, auth.userId, 'user', requestBody.message)
   } catch {
     return jsonError('INTERNAL_ERROR', 'サーバーエラーが発生しました。時間をおいて再試行してください。', 500)
   }
 
   try {
+    const { context, citations, qaBlocked } = await buildContext(auth.userId, requestBody.documentIds)
+    if (qaBlocked) {
+      const assistantMessage = await addMessage(session.id, auth.userId, 'assistant', NO_ANSWER_MESSAGE, [])
+      return NextResponse.json({
+        messageId: assistantMessage.id,
+        sessionId: requestBody.sessionId,
+        role: 'assistant',
+        content: NO_ANSWER_MESSAGE,
+        citations: [],
+        createdAt,
+      } satisfies ChatResponse)
+    }
+
+    const prompt = context ? `# 参照コンテキスト\n${context}\n\n# 質問\n${requestBody.message}` : requestBody.message
+
     if (shouldStream) {
-      const providerStream = await streamAnswer(body.message)
+      const providerStream = await streamAnswer(prompt)
       const reader = providerStream.getReader()
       const decoder = new TextDecoder()
 
@@ -146,7 +185,7 @@ export async function POST(req: Request) {
             }
 
             try {
-              const assistantMessage = await addMessage(session.id, auth.userId, 'assistant', assembledText)
+              const assistantMessage = await addMessage(session.id, auth.userId, 'assistant', assembledText, citations)
               controller.enqueue(
                 encoder.encode(
                   sse('done', {
@@ -194,15 +233,16 @@ export async function POST(req: Request) {
       })
     }
 
-    const result = await generateAnswer({ prompt: body.message })
-    const assistantMessage = await addMessage(session.id, auth.userId, 'assistant', result.content)
+    const result = await generateAnswer({ prompt })
+    const content = result.content.trim() || NO_ANSWER_MESSAGE
+    const assistantMessage = await addMessage(session.id, auth.userId, 'assistant', content, citations)
 
     const response: ChatResponse = {
       messageId: assistantMessage.id,
-      sessionId: body.sessionId,
+      sessionId: requestBody.sessionId,
       role: 'assistant',
-      content: result.content,
-      citations: [],
+      content,
+      citations,
       usage: result.usage,
       createdAt,
     }
@@ -212,6 +252,5 @@ export async function POST(req: Request) {
     const mapped = mapProviderErrorToApiError((error as Error & { cause?: { status?: number; code?: string } }).cause)
     return jsonError(mapped.code, mapped.message, mapped.status)
   }
-}
   })
 }

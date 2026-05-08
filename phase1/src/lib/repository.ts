@@ -1,5 +1,5 @@
 import { createSupabaseServiceClient } from '@/lib/supabase'
-import type { DbDocumentRow, DbMessageRow, DbSessionRow, DocumentStatus } from '@/types/api'
+import type { Citation, DbDocumentRow, DbMessageRow, DbSessionRow, DocumentStatus } from '@/types/api'
 
 export const createSession = async (userId: string, title: string) => {
   const supabase = createSupabaseServiceClient()
@@ -24,9 +24,13 @@ export const listSessions = async (userId: string, limit: number, cursor?: strin
   if (error) throw error
   return { items: (data ?? []).slice(0, limit), nextCursor: (data ?? []).length > limit ? (data ?? [])[limit - 1]?.id ?? null : null }
 }
-export const addMessage = async (sessionId: string, userId: string, role: 'user' | 'assistant', content: string) => {
+export const addMessage = async (sessionId: string, userId: string, role: 'user' | 'assistant', content: string, citations: Citation[] = []) => {
   const supabase = createSupabaseServiceClient()
-  const { data, error } = await supabase.from('messages').insert({ session_id: sessionId, user_id: userId, role, content }).select('*').single<DbMessageRow>()
+  const { data, error } = await supabase
+    .from('messages')
+    .insert({ session_id: sessionId, user_id: userId, role, content, citations })
+    .select('*')
+    .single<DbMessageRow>()
   if (error) throw error
   return data
 }
@@ -69,6 +73,19 @@ export const getDocument = async (id: string, userId: string) => {
 export const getSessionDocuments = async (sessionId: string) => {
   const supabase = createSupabaseServiceClient()
   const { data, error } = await supabase.from('documents').select('*').eq('session_id', sessionId).order('created_at', { ascending: true }).returns<DbDocumentRow[]>()
+  if (error) throw error
+  return data ?? []
+}
+
+export const getDocumentsByIds = async (userId: string, ids: string[]) => {
+  if (ids.length === 0) return []
+  const supabase = createSupabaseServiceClient()
+  const { data, error } = await supabase
+    .from('documents')
+    .select('*')
+    .eq('user_id', userId)
+    .in('id', ids)
+    .returns<DbDocumentRow[]>()
   if (error) throw error
   return data ?? []
 }
