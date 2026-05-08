@@ -67,6 +67,7 @@ export default function UploadPage() {
   const [historyKeyword, setHistoryKeyword] = useState('')
   const [historyDocumentFilter, setHistoryDocumentFilter] = useState('all')
   const [highlightedChunkId, setHighlightedChunkId] = useState<string | null>(null)
+  const [resendErrorMessage, setResendErrorMessage] = useState<string | null>(null)
 
   useEffect(() => {
     setUserId(getUserId())
@@ -193,8 +194,8 @@ export default function UploadPage() {
 
   const CHAT_ERROR_MESSAGE = '回答の取得に失敗しました。ネットワーク状態を確認のうえ、再送してください。'
 
-  const sendQuestion = async (message: string) => {
-    if (!uploadResult?.sessionId || !message.trim() || activeReadyDocs.length === 0) return
+  const sendQuestion = async (message: string): Promise<boolean> => {
+    if (!uploadResult?.sessionId || !message.trim() || activeReadyDocs.length === 0) return false
 
     setIsAsking(true)
     setQaAnswer('')
@@ -210,16 +211,18 @@ export default function UploadPage() {
         setQaErrorMessage(CHAT_ERROR_MESSAGE)
         setQaUsage(null)
         setQaEstimatedCostUsd(null)
-        return
+        return false
       }
       const json = (await res.json()) as ChatResponse
       setQaAnswer(json.content ?? '回答を取得できませんでした。')
       setQaUsage(json.usage ?? null)
       setQaEstimatedCostUsd(typeof json.estimatedCostUsd === 'number' ? json.estimatedCostUsd : null)
+      return true
     } catch {
       setQaErrorMessage(CHAT_ERROR_MESSAGE)
       setQaUsage(null)
       setQaEstimatedCostUsd(null)
+      return false
     } finally {
       setIsAsking(false)
     }
@@ -237,8 +240,12 @@ export default function UploadPage() {
 
 
   const resendQuestion = async (message: string) => {
+    setResendErrorMessage(null)
     setQuestion(message)
-    await sendQuestion(message)
+    const ok = await sendQuestion(message)
+    if (!ok) {
+      setResendErrorMessage('質問の再送に失敗しました。時間をおいて再試行してください。')
+    }
   }
 
   return (
@@ -361,6 +368,7 @@ export default function UploadPage() {
         onDocumentFilterChange={setHistoryDocumentFilter}
         onRefillQuestion={refillQuestion}
         onResendQuestion={resendQuestion}
+        resendErrorMessage={resendErrorMessage ?? qaErrorMessage}
         highlightedChunkId={highlightedChunkId}
         onCitationClick={setHighlightedChunkId}
         formatUsd={formatUsd}

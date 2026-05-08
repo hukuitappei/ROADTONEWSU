@@ -9,6 +9,7 @@ export type ApiError = {
 }
 
 export type Citation = {
+  docId?: string
   chunkId: string
   pageStart: number
   pageEnd: number
