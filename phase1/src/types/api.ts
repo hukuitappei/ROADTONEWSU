@@ -57,8 +57,10 @@ export type DocumentDetail = {
   status: DocumentStatus
   qaEnabled: boolean
   summary: string | null
+  errorMessage: string | null
   pageCount: number | null
   charCount: number | null
+  exceedsQaLimit: boolean
   createdAt: string
   updatedAt: string
 }
@@ -135,8 +137,10 @@ export const mapDbDocumentToDetail = (row: DbDocumentRow): DocumentDetail => ({
   status: row.status,
   qaEnabled: row.qa_enabled ?? row.status === 'ready',
   summary: row.summary,
+  errorMessage: row.error_message,
   pageCount: row.page_count,
   charCount: row.char_count,
+  exceedsQaLimit: (row.page_count ?? 0) > 30 || (row.char_count ?? 0) > 80_000,
   createdAt: toIso(row.created_at),
   updatedAt: toIso(row.updated_at),
 })

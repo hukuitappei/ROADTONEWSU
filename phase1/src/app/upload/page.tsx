@@ -1,7 +1,7 @@
 'use client'
 
-import { FormEvent, useMemo, useState } from 'react'
-import type { ApiError } from '@/types/api'
+import { FormEvent, useEffect, useMemo, useState } from 'react'
+import type { ApiError, DocumentDetail } from '@/types/api'
 
 type UploadResponse = {
   uploadId: string
@@ -46,6 +46,45 @@ export default function UploadPage() {
   const [uploadResult, setUploadResult] = useState<UploadResponse | null>(null)
   const [selectedDocumentIds, setSelectedDocumentIds] = useState<string[]>([])
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [documentStates, setDocumentStates] = useState<Record<string, DocumentDetail>>({})
+
+  useEffect(() => {
+    if (selectedDocumentIds.length === 0) return
+
+    const controller = new AbortController()
+
+    const fetchDocumentStatus = async (id: string) => {
+      try {
+        const response = await fetch(`/api/documents/${id}`, { signal: controller.signal })
+        if (!response.ok) return
+        const payload = (await response.json()) as { document: DocumentDetail }
+        setDocumentStates((prev) => ({ ...prev, [id]: payload.document }))
+      } catch {
+        // no-op
+      }
+    }
+
+    selectedDocumentIds.forEach((id) => {
+      const doc = documentStates[id]
+      if (!doc || doc.status === 'processing' || doc.status === 'uploaded') {
+        void fetchDocumentStatus(id)
+      }
+    })
+
+    const intervalId = setInterval(() => {
+      selectedDocumentIds.forEach((id) => {
+        const doc = documentStates[id]
+        if (!doc || doc.status === 'processing' || doc.status === 'uploaded') {
+          void fetchDocumentStatus(id)
+        }
+      })
+    }, 2500)
+
+    return () => {
+      controller.abort()
+      clearInterval(intervalId)
+    }
+  }, [selectedDocumentIds, documentStates])
 
   const canSubmit = useMemo(() => !isUploading && file !== null, [file, isUploading])
 
@@ -142,9 +181,36 @@ export default function UploadPage() {
           <p>まだ対象ドキュメントはありません。</p>
         ) : (
           <ul>
-            {selectedDocumentIds.map((id) => (
-              <li key={id}>{id}</li>
-            ))}
+            {selectedDocumentIds.map((id) => {
+              const doc = documentStates[id]
+              return (
+                <li key={id} style={{ marginBottom: '1rem' }}>
+                  <div>documentId: {id}</div>
+                  <div>status: {doc?.status ?? 'processing'}</div>
+                  {doc?.status === 'processing' && (
+                    <div aria-live="polite">⏳ 抽出中/要約中…</div>
+                  )}
+                  {doc?.exceedsQaLimit && (
+                    <div style={{ color: '#8a5a00' }}>このPDFはPhase 1のQ&A上限を超えています。要約のみ対応します。</div>
+                  )}
+                  {doc?.status === 'ready' && (
+                    <>
+                      <div>page_count: {doc.pageCount ?? '-'}</div>
+                      <div>char_count: {doc.charCount ?? '-'}</div>
+                      <div style={{ whiteSpace: 'pre-wrap' }}>summary: {doc.summary ?? '（要約なし）'}</div>
+                    </>
+                  )}
+                  {doc?.status === 'error' && (
+                    <>
+                      <div style={{ color: '#b00020' }}>error: {doc.errorMessage ?? '処理に失敗しました。'}</div>
+                      <button type="button" onClick={() => window.location.reload()}>
+                        再試行
+                      </button>
+                    </>
+                  )}
+                </li>
+              )
+            })}
           </ul>
         )}
       </section>
