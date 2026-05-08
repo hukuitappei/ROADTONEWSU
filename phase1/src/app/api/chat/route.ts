@@ -12,6 +12,13 @@ const MAX_CONTEXT_DOCS = 5
 const PHASE1_QA_CHUNK_LIMIT = 5
 const NO_ANSWER_MESSAGE = 'PDFの内容からは判断できません（根拠不足または関連箇所なし）。'
 
+const buildChunkCitation = (chunkId: string, pageStart: number | null | undefined, pageEnd: number | null | undefined, quote: string) => ({
+  chunkId,
+  pageStart: pageStart ?? 1,
+  pageEnd: pageEnd ?? 1,
+  quote,
+})
+
 const buildContext = async (userId: string, documentIds: string[] | undefined) => {
   const ids = (documentIds ?? []).slice(0, MAX_CONTEXT_DOCS)
   const docs = await getDocumentsByIds(userId, ids)
@@ -24,10 +31,7 @@ const buildContext = async (userId: string, documentIds: string[] | undefined) =
         return {
           contextText: `Document ${doc.id} (${doc.filename})\n${chunks.map((c) => c.content).join('\n\n')}`,
           citations: chunks.map((c) => ({
-            chunkId: `${doc.id}:${c.chunk_index}`,
-            pageStart: c.page_start ?? 1,
-            pageEnd: c.page_end ?? 1,
-            quote: c.content.slice(0, 120),
+            ...buildChunkCitation(`${doc.id}:${c.chunk_index}`, c.page_start, c.page_end, c.content.slice(0, 120)),
           })),
         }
       }
@@ -35,10 +39,7 @@ const buildContext = async (userId: string, documentIds: string[] | undefined) =
       return {
         contextText: `Document ${doc.id} (${doc.filename})\n${doc.summary ?? ''}`,
         citations: [{
-          chunkId: `${doc.id}:summary`,
-          pageStart: 1,
-          pageEnd: doc.page_count ?? 1,
-          quote: (doc.summary ?? '').slice(0, 120),
+          ...buildChunkCitation(`${doc.id}:summary`, 1, doc.page_count ?? 1, (doc.summary ?? '').slice(0, 120)),
         }],
       }
     }),
