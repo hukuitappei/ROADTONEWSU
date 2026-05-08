@@ -6,43 +6,57 @@ LLM APIを使って、実際に使えるPDF要約・質問応答アプリを1つ
 
 ## 現在の進捗
 
-**35%（Week 3〜4 APIスケルトン完成）**
+**約55%（Week 5〜6 PDF対応ほぼ完了・要約LLM未接続）**
 
 ---
 
 ## 実装済み
 
-### API・バックエンド骨格（Week 3〜4 完了）
+### API・バックエンド（Week 3〜4 完了）
 
 | ファイル | 内容 |
 |---|---|
 | `src/types/api.ts` | API型定義（ChatRequest / ChatResponse / DocumentDetailResponse / SessionDetailResponse 等） |
-| `src/lib/http.ts` | 共通エラーレスポンスヘルパー（`jsonError` / `mapProviderStatusToApiError`） |
-| `src/lib/llm.ts` | OpenAI互換LLMクライアント（非ストリーミング・SSEストリーミング） |
-| `src/lib/store.ts` | インメモリセッション/ドキュメント/メッセージストア（Supabase移行前の仮実装） |
-| `src/lib/supabase.ts` | Supabaseクライアント初期化（CRUD未実装） |
+| `src/lib/http.ts` | 共通エラーレスポンスヘルパー（`jsonError` / `mapProviderErrorToApiError`） |
+| `src/lib/llm.ts` | OpenAI互換LLMクライアント（非ストリーミング・SSEストリーミング・タイムアウト・リトライ） |
+| `src/lib/supabase.ts` | Supabaseクライアント初期化 |
+| `src/lib/repository.ts` | Supabase CRUD（sessions / messages / documents） |
+| `src/lib/auth.ts` | x-user-id ヘッダー検証（Phase 1 暫定擬似認証） |
+| `src/lib/rate-limit.ts` | Supabase RPC ベースの分散レート制限（30req/min・3同時） |
 | `src/app/api/chat/route.ts` | チャットAPI（SSEストリーミング・非ストリーミング・metaイベント対応） |
-| `src/app/api/upload/route.ts` | PDFアップロードAPI（バリデーション・セッション自動作成） |
+| `src/app/api/upload/route.ts` | PDFアップロードAPI（バリデーション・Storage保存・セッション自動作成） |
 | `src/app/api/sessions/route.ts` | セッション一覧API（カーソルページング） |
 | `src/app/api/sessions/[id]/route.ts` | セッション詳細API（メッセージ履歴・limit/beforeページング） |
-| `src/app/api/documents/[id]/route.ts` | ドキュメント詳細API（qaEnabled / summary / pageCount 等） |
+| `src/app/api/documents/[id]/route.ts` | ドキュメント詳細API（status / qaEnabled / summary / pageCount 等） |
+
+### PDF処理・ストレージ（Week 5〜6 ほぼ完了）
+
+| ファイル | 内容 |
+|---|---|
+| `src/lib/storage.ts` | Supabase Storage への PDF 保存・削除・エラー分類 |
+| `src/lib/pdf.ts` | pdf-parse によるテキスト抽出・ページ数取得 |
+| `src/lib/chunking.ts` | テキストチャンク分割（3,000文字/チャンク・先頭5チャンク） |
+| `src/lib/summary.ts` | ドキュメント処理ジョブ（抽出→チャンク分割→要約保存） |
+| `src/app/upload/page.tsx` | PDFアップロードUI（ステータスポーリング・処理中表示） |
 
 ### インフラ・設定
 
 | ファイル | 内容 |
 |---|---|
 | `supabase/migrations/20260507_001_init_phase1.sql` | DBスキーマ（sessions / messages / documents / document_chunks） |
+| `supabase/migrations/20260508_002_auth_and_rate_limit.sql` | user_id カラム・api_rate_limits テーブル・RPC 関数 |
+| `package.json` / `tsconfig.json` / `next.config.ts` | Next.js 15 プロジェクト設定 |
 | `.env.example` | 環境変数テンプレート |
 | `tests/api_contract_smoke.sh` | API契約スモークチェックスクリプト |
 | `docs/api_contract.md` | API契約書 |
-| `docs/screen_design.md` | 画面設計メモ |
 
-### 未実装（次フェーズ）
+### 未実装
 
-- チャットUI（Reactコンポーネント一式）
-- PDF テキスト抽出・チャンク分割
-- Supabase 永続化（現状はインメモリ）
-- citations（回答根拠）生成
+- **PDF要約生成（LLM連携）** — 現状はテキスト切り出しのみ。LLM呼び出しによる要約未実装（Week 5-6 残件）
+- チャットUI（Reactコンポーネント一式）— Week 7〜8
+- citations（回答根拠）生成 — Week 7〜8
+- トークン数・概算コスト表示 — Week 9〜10
+- Vercel デプロイ — Week 11〜12
 
 ---
 
