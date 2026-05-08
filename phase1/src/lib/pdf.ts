@@ -1,3 +1,5 @@
+import pdfParse from 'pdf-parse'
+
 export const PHASE1_PDF_PAGE_LIMIT = 30
 export const PHASE1_PDF_CHAR_LIMIT = 80000
 
@@ -9,16 +11,12 @@ export type ExtractedPdf = {
 }
 
 export const extractPdfText = async (file: File): Promise<ExtractedPdf> => {
-  const raw = await file.text()
+  const buffer = Buffer.from(await file.arrayBuffer())
+  const data = await pdfParse(buffer)
   return {
-    text: raw,
-    pageCount: estimatePageCount(raw),
+    text: data.text,
+    pageCount: data.numpages,
   }
-}
-
-const estimatePageCount = (text: string) => {
-  const pageBreaks = text.match(/\f/g)?.length ?? 0
-  return Math.max(1, pageBreaks + 1)
 }
 
 export const isPdfWithinQaLimit = (pageCount: number, charCount: number) =>
