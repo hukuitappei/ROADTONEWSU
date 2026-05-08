@@ -1,12 +1,15 @@
 import { withUserRateLimit } from '@/lib/rate-limit'
 import { NextResponse } from 'next/server'
 import { jsonError } from '@/lib/http'
+import { requireUserId } from '@/lib/auth'
 import { listSessions } from '@/lib/repository'
 import { isUuid } from '@/lib/validation'
 import { mapDbSessionToSessionDetail, type SessionsListResponse } from '@/types/api'
 
 export async function GET(req: Request) {
   return withUserRateLimit(req, async () => {
+    const auth = requireUserId(req)
+    if (!auth.ok) return auth.response
     const url = new URL(req.url)
     const limitParam = url.searchParams.get('limit')
     const cursor = url.searchParams.get('cursor')
@@ -27,7 +30,7 @@ export async function GET(req: Request) {
     }
 
     try {
-      const raw = await listSessions(limit, cursor)
+      const raw = await listSessions(auth.userId, limit, cursor)
       const response: SessionsListResponse = {
         items: raw.items.map((s) => ({
           ...mapDbSessionToSessionDetail(s),

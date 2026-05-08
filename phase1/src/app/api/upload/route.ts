@@ -1,6 +1,7 @@
 import { withUserRateLimit } from '@/lib/rate-limit'
 import { NextResponse } from 'next/server'
 import { jsonError } from '@/lib/http'
+import { requireUserId } from '@/lib/auth'
 import { enqueueDocumentProcessing } from '@/lib/summary'
 import { createDocument, createSession, getSession } from '@/lib/repository'
 import { isUuid } from '@/lib/validation'
@@ -16,6 +17,8 @@ const hasPdfMagicBytes = async (file: File): Promise<boolean> => {
 
 export async function POST(req: Request) {
   return withUserRateLimit(req, async () => {
+    const auth = requireUserId(req)
+    if (!auth.ok) return auth.response
     let form: FormData
     try {
       form = await req.formData()
@@ -62,7 +65,7 @@ export async function POST(req: Request) {
 
     let session
     try {
-      session = sessionId ? await getSession(sessionId) : await createSession(`${file.name} の要約`)
+      session = sessionId ? await getSession(sessionId, auth.userId) : await createSession(auth.userId, `${file.name} の要約`)
     } catch {
       return jsonError('INTERNAL_ERROR', 'サーバーエラーが発生しました。時間をおいて再試行してください。', 500)
     }
@@ -76,7 +79,7 @@ export async function POST(req: Request) {
 
     let document
     try {
-      document = await createDocument(session.id, file.name)
+      document = await createDocument(session.id, file.name, auth.userId)
     } catch {
       return jsonError('INTERNAL_ERROR', 'サーバーエラーが発生しました。時間をおいて再試行してください。', 500)
     }

@@ -1,6 +1,7 @@
 import { withUserRateLimit } from '@/lib/rate-limit'
 import { NextResponse } from 'next/server'
 import { jsonError } from '@/lib/http'
+import { requireUserId } from '@/lib/auth'
 import { getMessages, getSession, getSessionDocuments } from '@/lib/repository'
 import { isUuid } from '@/lib/validation'
 import { mapDbDocumentToSummary, mapDbMessageToMessageItem, mapDbSessionToSessionDetail, type SessionDetailResponse } from '@/types/api'
@@ -8,6 +9,8 @@ import { mapDbDocumentToSummary, mapDbMessageToMessageItem, mapDbSessionToSessio
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   return withUserRateLimit(req, async () => {
+    const auth = requireUserId(req)
+    if (!auth.ok) return auth.response
     if (!isUuid(id)) {
       return jsonError('BAD_REQUEST', '入力内容に誤りがあります。内容を確認してください。', 400, {
         field: 'id',
@@ -17,7 +20,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
     let session
     try {
-      session = await getSession(id)
+      session = await getSession(id, auth.userId)
     } catch {
       return jsonError('INTERNAL_ERROR', 'サーバーエラーが発生しました。時間をおいて再試行してください。', 500)
     }

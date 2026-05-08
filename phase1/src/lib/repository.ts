@@ -1,32 +1,32 @@
 import { createSupabaseServiceClient } from '@/lib/supabase'
 import type { DbDocumentRow, DbMessageRow, DbSessionRow, DocumentStatus } from '@/types/api'
 
-export const createSession = async (title: string) => {
+export const createSession = async (userId: string, title: string) => {
   const supabase = createSupabaseServiceClient()
-  const { data, error } = await supabase.from('sessions').insert({ title }).select('*').single<DbSessionRow>()
+  const { data, error } = await supabase.from('sessions').insert({ user_id: userId, title }).select('*').single<DbSessionRow>()
   if (error) throw error
   return data
 }
-export const getSession = async (id: string) => {
+export const getSession = async (id: string, userId: string) => {
   const supabase = createSupabaseServiceClient()
-  const { data, error } = await supabase.from('sessions').select('*').eq('id', id).maybeSingle<DbSessionRow>()
+  const { data, error } = await supabase.from('sessions').select('*').eq('id', id).eq('user_id', userId).maybeSingle<DbSessionRow>()
   if (error) throw error
   return data
 }
-export const listSessions = async (limit: number, cursor?: string | null) => {
+export const listSessions = async (userId: string, limit: number, cursor?: string | null) => {
   const supabase = createSupabaseServiceClient()
-  let query = supabase.from('sessions').select('*').order('created_at', { ascending: false }).limit(limit + 1)
+  let query = supabase.from('sessions').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(limit + 1)
   if (cursor) {
-    const { data: c } = await supabase.from('sessions').select('created_at').eq('id', cursor).maybeSingle<{ created_at: string | null }>()
+    const { data: c } = await supabase.from('sessions').select('created_at').eq('id', cursor).eq('user_id', userId).maybeSingle<{ created_at: string | null }>()
     if (c?.created_at) query = query.lt('created_at', c.created_at)
   }
   const { data, error } = await query.returns<DbSessionRow[]>()
   if (error) throw error
   return { items: (data ?? []).slice(0, limit), nextCursor: (data ?? []).length > limit ? (data ?? [])[limit - 1]?.id ?? null : null }
 }
-export const addMessage = async (sessionId: string, role: 'user' | 'assistant', content: string) => {
+export const addMessage = async (sessionId: string, userId: string, role: 'user' | 'assistant', content: string) => {
   const supabase = createSupabaseServiceClient()
-  const { data, error } = await supabase.from('messages').insert({ session_id: sessionId, role, content }).select('*').single<DbMessageRow>()
+  const { data, error } = await supabase.from('messages').insert({ session_id: sessionId, user_id: userId, role, content }).select('*').single<DbMessageRow>()
   if (error) throw error
   return data
 }
@@ -44,15 +44,15 @@ export const getMessages = async (sessionId: string, limit = 50, before?: string
   const rows = data ?? []
   return { items: rows.slice(0, limit).reverse(), hasMore: rows.length > limit }
 }
-export const createDocument = async (sessionId: string, fileName: string) => {
+export const createDocument = async (sessionId: string, fileName: string, userId: string) => {
   const supabase = createSupabaseServiceClient()
-  const { data, error } = await supabase.from('documents').insert({ session_id: sessionId, filename: fileName, storage_path: `pending/${crypto.randomUUID()}-${fileName}`, status: 'processing' }).select('*').single<DbDocumentRow>()
+  const { data, error } = await supabase.from('documents').insert({ user_id: userId, session_id: sessionId, filename: fileName, storage_path: `pending/${crypto.randomUUID()}-${fileName}`, status: 'processing' }).select('*').single<DbDocumentRow>()
   if (error) throw error
   return data
 }
-export const getDocument = async (id: string) => {
+export const getDocument = async (id: string, userId: string) => {
   const supabase = createSupabaseServiceClient()
-  const { data, error } = await supabase.from('documents').select('*').eq('id', id).maybeSingle<DbDocumentRow>()
+  const { data, error } = await supabase.from('documents').select('*').eq('id', id).eq('user_id', userId).maybeSingle<DbDocumentRow>()
   if (error) throw error
   return data
 }
