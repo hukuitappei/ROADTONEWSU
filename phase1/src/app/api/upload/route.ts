@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 import { jsonError } from '@/lib/http'
 import { requireUserId } from '@/lib/auth'
 import { enqueueDocumentProcessing } from '@/lib/summary'
-import { createDocument, createSession, deleteDocument, getSession, updateDocument, updateDocumentStoragePath } from '@/lib/repository'
+import { createDocument, createSession, getSession } from '@/lib/repository'
 import { isUuid } from '@/lib/validation'
 import { deletePdfFromStorage, savePdfToStorage, StorageSaveError } from '@/lib/storage'
 
@@ -20,6 +20,7 @@ export async function POST(req: Request) {
   return withUserRateLimit(req, async () => {
     const auth = requireUserId(req)
     if (!auth.ok) return auth.response
+
     let form: FormData
     try {
       form = await req.formData()
@@ -78,11 +79,13 @@ export async function POST(req: Request) {
       })
     }
 
-    let uploadedStoragePath: string | null = null
+    // Storage 保存 → DB 登録の順で行う。
+    // DB 登録失敗時は Storage をロールバックする。
+    let storagePath: string
     try {
       const binary = await file.arrayBuffer()
       const saved = await savePdfToStorage(session.id, file.name, binary, file.type || 'application/pdf')
-      uploadedStoragePath = saved.storage_path
+      storagePath = saved.storage_path
     } catch (error) {
       if (error instanceof StorageSaveError) {
         if (error.type === 'authorization') {
@@ -100,48 +103,28 @@ export async function POST(req: Request) {
 
     let document
     try {
-      document = await createDocument(session.id, file.name, auth.userId)
-      if (uploadedStoragePath) {
-        await updateDocumentStoragePath(document.id, uploadedStoragePath)
-      }
-    } catch {
-      if (uploadedStoragePath) {
-        try {
-          await deletePdfFromStorage(uploadedStoragePath)
-        } catch {
-          // ロールバック失敗時は監視で検知する前提で、クライアントには作成失敗を返す。
-        }
-      }
-      return jsonError('INTERNAL_ERROR', 'サーバーエラーが発生しました。時間をおいて再試行してください。', 500)
-    }
-
-    try {
-      await updateDocument(document.id, { status: 'processing', error_message: null })
+      document = await createDocument(session.id, file.name, auth.userId, storagePath)
     } catch {
       try {
-        await deleteDocument(document.id)
+        await deletePdfFromStorage(storagePath)
       } catch {
-        // documents行の削除失敗は運用監視に委ねる
-      }
-      if (uploadedStoragePath) {
-        try {
-          await deletePdfFromStorage(uploadedStoragePath)
-        } catch {
-          // storage側の削除失敗は運用監視に委ねる
-        }
+        // ロールバック失敗は運用監視で検知する前提。
       }
       return jsonError('INTERNAL_ERROR', 'サーバーエラーが発生しました。時間をおいて再試行してください。', 500)
     }
 
     void enqueueDocumentProcessing(document.id, file)
 
-    return NextResponse.json({
-      uploadId: document.id,
-      sessionId: session.id,
-      fileName: document.filename,
-      fileSize: file.size,
-      status: document.status,
-      createdAt: document.created_at ?? new Date().toISOString(),
-    })
+    return NextResponse.json(
+      {
+        uploadId: document.id,
+        sessionId: session.id,
+        fileName: document.filename,
+        fileSize: file.size,
+        status: document.status,
+        createdAt: document.created_at ?? new Date().toISOString(),
+      },
+      { status: 201 },
+    )
   })
 }

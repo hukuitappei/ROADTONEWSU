@@ -44,25 +44,13 @@ export const getMessages = async (sessionId: string, limit = 50, before?: string
   const rows = data ?? []
   return { items: rows.slice(0, limit).reverse(), hasMore: rows.length > limit }
 }
-export const createDocument = async (sessionId: string, fileName: string, userId: string) => {
+export const createDocument = async (sessionId: string, fileName: string, userId: string, storagePath: string) => {
   const supabase = createSupabaseServiceClient()
   const { data, error } = await supabase
     .from('documents')
-    .insert({ user_id: userId, session_id: sessionId, filename: fileName, storage_path: null, status: 'uploaded' })
+    .insert({ user_id: userId, session_id: sessionId, filename: fileName, storage_path: storagePath, status: 'processing' })
     .select('*')
     .single<DbDocumentRow>()
-  if (error) throw error
-  return data
-}
-
-export const updateDocumentStoragePath = async (id: string, storagePath: string) => {
-  const supabase = createSupabaseServiceClient()
-  const { data, error } = await supabase
-    .from('documents')
-    .update({ storage_path: storagePath })
-    .eq('id', id)
-    .select('*')
-    .maybeSingle<DbDocumentRow>()
   if (error) throw error
   return data
 }
