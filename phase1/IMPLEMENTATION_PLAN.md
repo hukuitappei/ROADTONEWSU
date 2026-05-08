@@ -387,6 +387,7 @@ export function estimateCost({ model, promptTokens, completionTokens }: {
 - READMEを更新し、セットアップ・実行手順・既知制約・デプロイ手順を明文化。
 - Phase 2引き継ぎドキュメント（`docs/phase2_handoff.md`）を新規作成。
 - Vercel公開と本番Supabase設定は、実運用環境の資格情報準備後に実施。
+- デプロイ後検証用に `tests/deploy_smoke.sh` を追加し、`DEMO_URL` 指定で基本疎通を自動確認できるようにした。
 
 ## 学習チェックリスト
 
