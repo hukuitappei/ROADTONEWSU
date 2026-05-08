@@ -70,6 +70,24 @@ describe('API contract: route handlers', () => {
     expect(body.error?.details).toEqual({ field: 'limit', reason: 'invalid_range' })
   })
 
+
+  it('upload: malformed form-data body -> 400 BAD_REQUEST', async () => {
+    const { POST } = await import('@/app/api/upload/route')
+    const req = new Request('http://localhost/api/upload', {
+      method: 'POST',
+      headers: { 'content-type': 'multipart/form-data; boundary=bad' },
+      body: '--bad
+malformed body',
+    })
+
+    const res = await POST(req)
+    const body = await parseJson(res)
+
+    expect(res.status).toBe(400)
+    expect(body.error?.code).toBe('BAD_REQUEST')
+    expect(body.error?.details).toEqual({ field: 'body', reason: 'invalid_form_data' })
+  })
+
   it('upload: invalid MIME -> 400 BAD_REQUEST', async () => {
     const { POST } = await import('@/app/api/upload/route')
     const form = new FormData()
@@ -82,6 +100,21 @@ describe('API contract: route handlers', () => {
     expect(res.status).toBe(400)
     expect(body.error?.code).toBe('BAD_REQUEST')
     expect(body.error?.details).toEqual({ field: 'file', reason: 'invalid_mime' })
+  })
+
+
+  it('upload: invalid PDF signature -> 400 BAD_REQUEST', async () => {
+    const { POST } = await import('@/app/api/upload/route')
+    const form = new FormData()
+    form.append('file', new File([new TextEncoder().encode('NOTPDF sample body')], 'fake.pdf', { type: 'application/pdf' }))
+
+    const req = new Request('http://localhost/api/upload', { method: 'POST', body: form })
+    const res = await POST(req)
+    const body = await parseJson(res)
+
+    expect(res.status).toBe(400)
+    expect(body.error?.code).toBe('BAD_REQUEST')
+    expect(body.error?.details).toEqual({ field: 'file', reason: 'invalid_pdf_signature' })
   })
 
   it('upload: file size overflow -> 413 PAYLOAD_TOO_LARGE', async () => {
