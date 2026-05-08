@@ -81,7 +81,11 @@ export async function POST(req: Request) {
   const createdAt = new Date().toISOString()
   const shouldStream = body.stream ?? true
 
-  await addMessage(session.id, 'user', body.message)
+  try {
+    await addMessage(session.id, 'user', body.message)
+  } catch {
+    return jsonError('INTERNAL_ERROR', 'サーバーエラーが発生しました。時間をおいて再試行してください。', 500)
+  }
 
   try {
     if (shouldStream) {
