@@ -152,6 +152,7 @@ curl -X POST /api/upload \
   "content": "要点は次の3つです...",
   "citations": [
     {
+      "docId": "2c7adf6b-3f9d-4b8f-a48e-9b7c7f6a0d12",
       "chunkId": "9a1cb8fd-95c6-42b0-a36f-f834348cb8f4",
       "pageStart": 2,
       "pageEnd": 2,
@@ -175,6 +176,7 @@ curl -X POST /api/upload \
 - `role` (required, string): 常に `assistant`
 - `content` (required, string): 回答本文
 - `citations` (required, array): 根拠配列（Phase 1採用方式）
+  - `docId` (optional, string): 根拠チャンクが属するドキュメントID（UIハイライト表示に使用）
   - `chunkId` (required, string): 根拠となるチャンクID（`{documentId}:{chunk_index}` / 旧データは `:summary`）
   - `pageStart` (required, integer): 開始ページ
   - `pageEnd` (required, integer): 終了ページ
@@ -187,6 +189,7 @@ curl -X POST /api/upload \
 - `createdAt` (required, string): 生成時刻（ISO 8601）
 
 - `citations` の `pageStart` / `pageEnd` は `document_chunks.page_start` / `page_end` を返す。
+- `docId` 未提供時、UI は `chunkId` の `:` より前方を `docId` として扱う。
 - 旧データなどページ情報が未保存のチャンクは `pageStart=1` / `pageEnd=1` にフォールバックする。
 
 ### 主要エラーレスポンス
