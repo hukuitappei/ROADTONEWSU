@@ -115,6 +115,8 @@ export type DbDocumentRow = {
   updated_at: string | null
 }
 
+import { PHASE1_PDF_CHAR_LIMIT, PHASE1_PDF_PAGE_LIMIT } from '@/lib/pdf'
+
 const toIso = (v: string | null | undefined) => v ?? new Date(0).toISOString()
 const normalizeTitle = (title: string | null | undefined) => title?.trim() || 'Untitled Session'
 
@@ -141,7 +143,7 @@ export const mapDbDocumentToDetail = (row: DbDocumentRow): DocumentDetail => ({
   errorMessage: row.error_message,
   pageCount: row.page_count,
   charCount: row.char_count,
-  exceedsQaLimit: (row.page_count ?? 0) > 30 || (row.char_count ?? 0) > 80_000,
+  exceedsQaLimit: (row.page_count ?? 0) > PHASE1_PDF_PAGE_LIMIT || (row.char_count ?? 0) > PHASE1_PDF_CHAR_LIMIT,
   createdAt: toIso(row.created_at),
   updatedAt: toIso(row.updated_at),
 })
