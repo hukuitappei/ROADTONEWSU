@@ -1,6 +1,7 @@
 import { withUserRateLimit } from '@/lib/rate-limit'
 import { NextResponse } from 'next/server'
 import { jsonError, mapProviderErrorToApiError } from '@/lib/http'
+import { requireUserId } from '@/lib/auth'
 import { generateAnswer, streamAnswer } from '@/lib/llm'
 import { addMessage, getSession } from '@/lib/repository'
 import { isUuid } from '@/lib/validation'
@@ -44,7 +45,9 @@ const validateBody = (body: ChatRequest | null) => {
 
 export async function POST(req: Request) {
   return withUserRateLimit(req, async () => {
-  const parsed = await parseBody(req)
+    const auth = requireUserId(req)
+    if (!auth.ok) return auth.response
+    const parsed = await parseBody(req)
   if (parsed.invalidJson) {
     return jsonError('BAD_REQUEST', 'リクエストが不正です', 400, { field: 'body', reason: 'invalid_json' })
   }
@@ -70,7 +73,7 @@ export async function POST(req: Request) {
     })
   }
 
-  const session = await getSession(body.sessionId)
+  const session = await getSession(body.sessionId, auth.userId)
   if (!session) {
     return jsonError('BAD_REQUEST', '入力内容に誤りがあります。内容を確認してください。', 400, {
       field: 'sessionId',
@@ -82,7 +85,7 @@ export async function POST(req: Request) {
   const shouldStream = body.stream ?? true
 
   try {
-    await addMessage(session.id, 'user', body.message)
+    await addMessage(session.id, auth.userId, 'user', body.message)
   } catch {
     return jsonError('INTERNAL_ERROR', 'サーバーエラーが発生しました。時間をおいて再試行してください。', 500)
   }
@@ -138,7 +141,7 @@ export async function POST(req: Request) {
             }
 
             try {
-              const assistantMessage = await addMessage(session.id, 'assistant', assembledText)
+              const assistantMessage = await addMessage(session.id, auth.userId, 'assistant', assembledText)
               controller.enqueue(
                 encoder.encode(
                   sse('done', {
@@ -187,7 +190,7 @@ export async function POST(req: Request) {
     }
 
     const result = await generateAnswer({ prompt: body.message })
-    const assistantMessage = await addMessage(session.id, 'assistant', result.content)
+    const assistantMessage = await addMessage(session.id, auth.userId, 'assistant', result.content)
 
     const response: ChatResponse = {
       messageId: assistantMessage.id,
