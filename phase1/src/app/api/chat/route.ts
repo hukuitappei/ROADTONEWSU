@@ -16,8 +16,8 @@ const SYSTEM_PROMPT = `あなたはPDF内容に基づいて回答するアシス
 
 const buildChunkCitation = (chunkId: string, pageStart: number | null | undefined, pageEnd: number | null | undefined, quote: string) => ({
   chunkId,
-  pageStart: pageStart ?? 1,
-  pageEnd: pageEnd ?? 1,
+  pageStart: pageStart ?? null,
+  pageEnd: pageEnd ?? null,
   quote,
 })
 
@@ -41,7 +41,7 @@ const buildContext = async (userId: string, documentIds: string[] | undefined) =
       return {
         contextText: `Document ${doc.id} (${doc.filename})\n${doc.summary ?? ''}`,
         citations: [{
-          ...buildChunkCitation(`${doc.id}:summary`, 1, doc.page_count ?? 1, (doc.summary ?? '').slice(0, 120)),
+          ...buildChunkCitation(`${doc.id}:summary`, null, null, (doc.summary ?? '').slice(0, 120)),
         }],
       }
     }),

@@ -18,6 +18,13 @@ type QuestionHistoryProps = {
   isResending: boolean
 }
 
+
+const formatCitationPageRange = (pageStart: number | null, pageEnd: number | null) => {
+  if (pageStart == null || pageEnd == null) return 'ページ不明'
+  if (pageStart == pageEnd) return `p.${pageStart}`
+  return `pp.${pageStart}-${pageEnd}`
+}
+
 const getUsageText = (usage: TokenUsage, estimatedCostUsd?: number, formatUsd?: (value: number) => string) => {
   const usageText = `tokens: prompt=${usage.promptTokens}, completion=${usage.completionTokens}, total=${usage.totalTokens}`
   if (typeof estimatedCostUsd === 'number' && formatUsd) {
@@ -63,7 +70,7 @@ const renderCitations = (msgId: string, citations: Citation[], highlightedChunkI
               <span>chunkId: {citation.chunkId}</span>
             </button>
             <div>
-              page: {citation.pageStart} - {citation.pageEnd}
+              page: {formatCitationPageRange(citation.pageStart, citation.pageEnd)}
             </div>
             <div style={{ whiteSpace: 'pre-wrap' }}>{citation.quote}</div>
           </li>
