@@ -1,7 +1,8 @@
 'use client'
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react'
-import type { ApiError, DocumentDetail, MessageItem, TokenUsage } from '@/types/api'
+import { QuestionHistory } from '@/app/upload/components/QuestionHistory'
+import type { ApiError, ChatResponse, DocumentDetail, MessageItem, TokenUsage } from '@/types/api'
 
 type UploadResponse = {
   uploadId: string
@@ -58,10 +59,14 @@ export default function UploadPage() {
   const [documentStates, setDocumentStates] = useState<Record<string, DocumentDetail>>({})
   const [question, setQuestion] = useState('')
   const [qaAnswer, setQaAnswer] = useState('')
+  const [qaErrorMessage, setQaErrorMessage] = useState<string | null>(null)
   const [qaUsage, setQaUsage] = useState<TokenUsage | null>(null)
   const [qaEstimatedCostUsd, setQaEstimatedCostUsd] = useState<number | null>(null)
   const [isAsking, setIsAsking] = useState(false)
   const [history, setHistory] = useState<MessageItem[]>([])
+  const [historyKeyword, setHistoryKeyword] = useState('')
+  const [historyDocumentFilter, setHistoryDocumentFilter] = useState('all')
+  const [highlightedChunkId, setHighlightedChunkId] = useState<string | null>(null)
 
   useEffect(() => {
     setUserId(getUserId())
@@ -184,34 +189,56 @@ export default function UploadPage() {
     })
   }
 
-  const askQuestion = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    if (!uploadResult?.sessionId || !question.trim() || activeReadyDocs.length === 0) return
+
+
+  const CHAT_ERROR_MESSAGE = '回答の取得に失敗しました。ネットワーク状態を確認のうえ、再送してください。'
+
+  const sendQuestion = async (message: string) => {
+    if (!uploadResult?.sessionId || !message.trim() || activeReadyDocs.length === 0) return
+
     setIsAsking(true)
     setQaAnswer('')
+    setQaErrorMessage(null)
+
     try {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-user-id': userId },
-        body: JSON.stringify({ sessionId: uploadResult.sessionId, message: question, documentIds: activeReadyDocs.map((d) => d.id), stream: false }),
+        body: JSON.stringify({ sessionId: uploadResult.sessionId, message, documentIds: activeReadyDocs.map((d) => d.id), stream: false }),
       })
-      const json = (await res.json()) as { content?: string; usage?: TokenUsage; estimatedCostUsd?: number }
+      if (!res.ok) {
+        setQaErrorMessage(CHAT_ERROR_MESSAGE)
+        setQaUsage(null)
+        setQaEstimatedCostUsd(null)
+        return
+      }
+      const json = (await res.json()) as ChatResponse
       setQaAnswer(json.content ?? '回答を取得できませんでした。')
       setQaUsage(json.usage ?? null)
       setQaEstimatedCostUsd(typeof json.estimatedCostUsd === 'number' ? json.estimatedCostUsd : null)
     } catch {
-      setQaAnswer('通信エラーが発生しました。')
+      setQaErrorMessage(CHAT_ERROR_MESSAGE)
       setQaUsage(null)
       setQaEstimatedCostUsd(null)
     } finally {
       setIsAsking(false)
     }
   }
+  const askQuestion = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    await sendQuestion(question)
+  }
 
   const formatUsd = (value: number) => `$${value.toFixed(6)}`
 
   const refillQuestion = (value: string) => {
     setQuestion(value)
+  }
+
+
+  const resendQuestion = async (message: string) => {
+    setQuestion(message)
+    await sendQuestion(message)
   }
 
   return (
@@ -310,6 +337,7 @@ export default function UploadPage() {
             {isAsking ? '回答生成中…' : '質問する'}
           </button>
         </form>
+        {qaErrorMessage && <div style={{ marginTop: '0.75rem', color: '#b00020' }}>{qaErrorMessage}</div>}
         {qaAnswer && (
           <div style={{ marginTop: '0.75rem', whiteSpace: 'pre-wrap' }}>
             回答: {qaAnswer}
@@ -323,49 +351,21 @@ export default function UploadPage() {
         )}
       </section>
 
-      <section style={{ marginTop: '2rem' }}>
-        <h2>質問履歴</h2>
-        {history.length === 0 ? (
-          <p>履歴はまだありません。</p>
-        ) : (
-          <ul>
-            {history.map((msg) => (
-              <li key={msg.id} style={{ marginBottom: '0.75rem' }}>
-                <strong>{msg.role}</strong>: {msg.content}
-                {msg.role === 'user' && (
-                  <div>
-                    <button type="button" onClick={() => refillQuestion(msg.content)}>
-                      この質問を再利用
-                    </button>
-                  </div>
-                )}
-                {msg.usage && (
-                  <div style={{ fontSize: '0.9em', marginTop: '0.35rem' }}>
-                    tokens: prompt={msg.usage.promptTokens}, completion={msg.usage.completionTokens}, total={msg.usage.totalTokens}
-                    {typeof msg.estimatedCostUsd === 'number' && ` / 概算コスト: ${formatUsd(msg.estimatedCostUsd)}`}
-                  </div>
-                )}
-                {msg.citations && msg.citations.length > 0 && (
-                  <details style={{ marginTop: '0.4rem' }}>
-                    <summary>根拠（{msg.citations.length}件）</summary>
-                    <ul>
-                      {msg.citations.map((citation) => (
-                        <li key={`${msg.id}-${citation.chunkId}`}>
-                          <div>chunkId: {citation.chunkId}</div>
-                          <div>
-                            page: {citation.pageStart} - {citation.pageEnd}
-                          </div>
-                          <div style={{ whiteSpace: 'pre-wrap' }}>{citation.quote}</div>
-                        </li>
-                      ))}
-                    </ul>
-                  </details>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+
+      <QuestionHistory
+        history={history}
+        selectedDocumentIds={selectedDocumentIds}
+        keyword={historyKeyword}
+        onKeywordChange={setHistoryKeyword}
+        documentFilter={historyDocumentFilter}
+        onDocumentFilterChange={setHistoryDocumentFilter}
+        onRefillQuestion={refillQuestion}
+        onResendQuestion={resendQuestion}
+        highlightedChunkId={highlightedChunkId}
+        onCitationClick={setHighlightedChunkId}
+        formatUsd={formatUsd}
+        isResending={isAsking}
+      />
     </main>
   )
 }
