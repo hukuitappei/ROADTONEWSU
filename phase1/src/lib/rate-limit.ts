@@ -12,49 +12,46 @@ type UserBucket = {
 
 const buckets = new Map<string, UserBucket>()
 
-const getUserKey = (req: Request) => {
-  const explicitUserId = req.headers.get('x-user-id')?.trim()
-  if (explicitUserId) {
-    return `user:${explicitUserId}`
-  }
-
+// x-user-id は認証未実装のためクライアントが自由に偽装できる。
+// Vercel/CDN が付与するヘッダーのみを信頼する。
+const getUserKey = (req: Request): string => {
   const forwardedFor = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
-  if (forwardedFor) {
-    return `ip:${forwardedFor}`
-  }
+  if (forwardedFor) return `ip:${forwardedFor}`
 
   const realIp = req.headers.get('x-real-ip')?.trim()
-  if (realIp) {
-    return `ip:${realIp}`
-  }
+  if (realIp) return `ip:${realIp}`
 
   return 'anonymous'
 }
 
-const getBucket = (key: string) => {
+const cleanStaleBuckets = () => {
+  const now = Date.now()
+  for (const [key, bucket] of buckets) {
+    if (now - bucket.windowStart >= WINDOW_MS * 2) buckets.delete(key)
+  }
+}
+
+const getBucket = (key: string): UserBucket => {
   const now = Date.now()
   const existing = buckets.get(key)
   if (!existing || now - existing.windowStart >= WINDOW_MS) {
     const renewed: UserBucket = { windowStart: now, requestCount: 0, inFlight: 0 }
     buckets.set(key, renewed)
+    if (Math.random() < 0.01) cleanStaleBuckets()
     return renewed
   }
   return existing
 }
 
-const rateLimitedResponse = () => jsonError('RATE_LIMITED', 'リクエストが集中しています。しばらく待ってから再試行してください。', 429)
+const rateLimitedResponse = () =>
+  jsonError('RATE_LIMITED', 'リクエストが集中しています。しばらく待ってから再試行してください。', 429)
 
-export async function withUserRateLimit(req: Request, handler: () => Promise<Response>) {
+export async function withUserRateLimit(req: Request, handler: () => Promise<Response>): Promise<Response> {
   const key = getUserKey(req)
   const bucket = getBucket(key)
 
-  if (bucket.requestCount >= MAX_REQUESTS_PER_WINDOW) {
-    return rateLimitedResponse()
-  }
-
-  if (bucket.inFlight >= MAX_CONCURRENT_REQUESTS) {
-    return rateLimitedResponse()
-  }
+  if (bucket.requestCount >= MAX_REQUESTS_PER_WINDOW) return rateLimitedResponse()
+  if (bucket.inFlight >= MAX_CONCURRENT_REQUESTS) return rateLimitedResponse()
 
   bucket.requestCount += 1
   bucket.inFlight += 1
