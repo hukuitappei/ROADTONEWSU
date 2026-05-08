@@ -4,6 +4,7 @@ import { jsonError, mapProviderErrorToApiError } from '@/lib/http'
 import { requireUserId } from '@/lib/auth'
 import { generateAnswer, streamAnswer } from '@/lib/llm'
 import { addMessage, getDocumentChunks, getDocumentsByIds, getSession } from '@/lib/repository'
+import { estimateCost } from '@/lib/pricing'
 import { isUuid } from '@/lib/validation'
 import type { ChatRequest, ChatResponse } from '@/types/api'
 
@@ -258,6 +259,20 @@ export async function POST(req: Request) {
 
     const result = await generateAnswer({ prompt })
     const content = result.content.trim() || NO_ANSWER_MESSAGE
+
+    let estimatedCostUsd: number | undefined
+    if (result.usage && result.model) {
+      try {
+        estimatedCostUsd = estimateCost({
+          model: result.model,
+          promptTokens: result.usage.promptTokens,
+          completionTokens: result.usage.completionTokens,
+        })
+      } catch {
+        estimatedCostUsd = undefined
+      }
+    }
+
     const assistantMessage = await addMessage(session.id, auth.userId, 'assistant', content, citations)
 
     const response: ChatResponse = {
@@ -267,6 +282,7 @@ export async function POST(req: Request) {
       content,
       citations,
       usage: result.usage,
+      estimatedCostUsd,
       createdAt,
     }
 
