@@ -11,8 +11,12 @@ import type { ChatRequest, ChatResponse } from '@/types/api'
 const MAX_CONTEXT_DOCS = 5
 const PHASE1_QA_CHUNK_LIMIT = 5
 const NO_ANSWER_MESSAGE = 'PDFの内容からは判断できません（根拠不足または関連箇所なし）。'
-const PROMPT_VERSION = 'v1.2'
-const SYSTEM_PROMPT = `あなたはPDF内容に基づいて回答するアシスタントです（prompt:${PROMPT_VERSION}）。根拠がない場合は「PDFの内容からは判断できません」と答えてください。`
+const PROMPT_VERSION = 'v1.3'
+const SYSTEM_PROMPT = `あなたはPDF内容に基づいて回答するアシスタントです（prompt:${PROMPT_VERSION}）。
+必ず以下のルールを守ってください：
+1. PDF内容に記載されていることのみ回答する。PDF外の知識・比較・推測は禁止する。
+2. 根拠となるPDF内の記述を必ず引用すること。
+3. 根拠が見当たらない場合や未記載の場合は「PDFの内容からは判断できません」と即答する。`.trim()
 
 const buildChunkCitation = (chunkId: string, pageStart: number | null | undefined, pageEnd: number | null | undefined, quote: string) => ({
   chunkId,

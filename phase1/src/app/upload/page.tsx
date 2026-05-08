@@ -33,7 +33,10 @@ const mapUploadErrorMessage = (error: ApiError | null): string => {
   }
 
   if (code === 'BAD_REQUEST') {
-    if (reason === 'invalid_mime' || reason === 'invalid_pdf_signature') {
+    if (reason === 'invalid_pdf_signature') {
+      return 'PDFの解析に失敗しました。画像PDFの可能性があります。テキストを含むPDFで再度お試しください。'
+    }
+    if (reason === 'invalid_mime') {
       return 'PDF形式のファイルのみアップロードできます。別のファイルを選択してください。'
     }
     if (reason === 'required') {
