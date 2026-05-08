@@ -1,13 +1,13 @@
 export type ModelPricing = {
-  inputPer1M: number
-  outputPer1M: number
+  inputPer1k: number
+  outputPer1k: number
 }
 
-export const MODEL_PRICING_USD_PER_1M: Record<string, ModelPricing> = {
-  'gpt-4o-mini': { inputPer1M: 0.15, outputPer1M: 0.6 },
-  'gpt-4o': { inputPer1M: 5, outputPer1M: 15 },
-  'gpt-4.1-mini': { inputPer1M: 0.4, outputPer1M: 1.6 },
-  'gpt-4.1': { inputPer1M: 2, outputPer1M: 8 },
+export const MODEL_PRICING_USD_PER_1K: Record<string, ModelPricing> = {
+  'gpt-4o-mini': { inputPer1k: 0.00015, outputPer1k: 0.0006 },
+  'gpt-4o': { inputPer1k: 0.005, outputPer1k: 0.015 },
+  'gpt-4.1-mini': { inputPer1k: 0.0004, outputPer1k: 0.0016 },
+  'gpt-4.1': { inputPer1k: 0.002, outputPer1k: 0.008 },
 }
 
 export type CostEstimateInput = {
@@ -20,12 +20,12 @@ export type CostEstimateInput = {
  * 未定義モデルは安全側で 0 扱いせず、誤った請求表示を防ぐため Error を投げる。
  */
 export const estimateCost = ({ model, promptTokens, completionTokens }: CostEstimateInput): number => {
-  const pricing = MODEL_PRICING_USD_PER_1M[model]
+  const pricing = MODEL_PRICING_USD_PER_1K[model]
   if (!pricing) {
     throw new Error(`unknown_model_pricing:${model}`)
   }
 
-  const inputCost = (promptTokens / 1_000_000) * pricing.inputPer1M
-  const outputCost = (completionTokens / 1_000_000) * pricing.outputPer1M
+  const inputCost = (promptTokens / 1000) * pricing.inputPer1k
+  const outputCost = (completionTokens / 1000) * pricing.outputPer1k
   return inputCost + outputCost
 }

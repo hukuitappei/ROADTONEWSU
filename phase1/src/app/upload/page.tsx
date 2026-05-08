@@ -350,7 +350,7 @@ export default function UploadPage() {
             回答: {qaAnswer}
             {qaUsage && (
               <div style={{ marginTop: '0.5rem' }}>
-                tokens: prompt={qaUsage.promptTokens}, completion={qaUsage.completionTokens}, total={qaUsage.totalTokens}
+                トークン内訳: prompt={qaUsage.promptTokens}, completion={qaUsage.completionTokens}, total={qaUsage.totalTokens}
               </div>
             )}
             {qaEstimatedCostUsd !== null && <div>概算コスト: {formatUsd(qaEstimatedCostUsd)}</div>}
