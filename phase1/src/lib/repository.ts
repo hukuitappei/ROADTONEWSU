@@ -91,7 +91,7 @@ export const getDocumentsByIds = async (userId: string, ids: string[]) => {
 }
 export const saveDocumentChunks = async (
   documentId: string,
-  chunks: Array<{ index: number; content: string }>,
+  chunks: Array<{ index: number; content: string; startPage: number | null; endPage: number | null }>,
 ) => {
   if (chunks.length === 0) return
   const supabase = createSupabaseServiceClient()
@@ -99,8 +99,8 @@ export const saveDocumentChunks = async (
     document_id: documentId,
     chunk_index: c.index,
     content: c.content,
-    page_start: null,
-    page_end: null,
+    page_start: c.startPage,
+    page_end: c.endPage,
   }))
   const { error } = await supabase.from('document_chunks').upsert(rows, { onConflict: 'document_id,chunk_index' })
   if (error) throw error

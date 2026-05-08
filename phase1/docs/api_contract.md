@@ -175,7 +175,7 @@ curl -X POST /api/upload \
 - `role` (required, string): 常に `assistant`
 - `content` (required, string): 回答本文
 - `citations` (required, array): 根拠配列（Phase 1採用方式）
-  - `chunkId` (required, string UUID): 根拠となるチャンクID
+  - `chunkId` (required, string): 根拠となるチャンクID（`{documentId}:{chunk_index}` / 旧データは `:summary`）
   - `pageStart` (required, integer): 開始ページ
   - `pageEnd` (required, integer): 終了ページ
   - `quote` (required, string): 根拠抜粋テキスト
@@ -185,6 +185,9 @@ curl -X POST /api/upload \
   - `totalTokens` (required, integer)
 - `estimatedCostUsd` (optional, number): `usage` と `model` から計算した概算USD
 - `createdAt` (required, string): 生成時刻（ISO 8601）
+
+- `citations` の `pageStart` / `pageEnd` は `document_chunks.page_start` / `page_end` を返す。
+- 旧データなどページ情報が未保存のチャンクは `pageStart=1` / `pageEnd=1` にフォールバックする。
 
 ### 主要エラーレスポンス
 

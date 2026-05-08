@@ -14,7 +14,7 @@ export const enqueueDocumentProcessing = async (documentId: string, file: File) 
     const charCount = extracted.text.length
     const qaEnabled = isPdfWithinQaLimit(extracted.pageCount, charCount)
 
-    const allChunks = chunkText(extracted.text)
+    const allChunks = chunkText(extracted.text, undefined, extracted.pages)
     await saveDocumentChunks(documentId, allChunks)
     const summaryChunks = headSummaryChunks(allChunks)
     const summaryBody = summaryChunks.map((chunk) => `- ${summarizeChunk(chunk.content)}`).join('\n')

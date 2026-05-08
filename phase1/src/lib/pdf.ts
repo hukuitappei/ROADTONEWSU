@@ -8,14 +8,34 @@ export const PHASE1_QA_LIMIT_MESSAGE = 'このPDFはPhase 1のQ&A上限を超え
 export type ExtractedPdf = {
   text: string
   pageCount: number
+  pages: Array<{ pageNumber: number; start: number; end: number }>
 }
 
 export const extractPdfText = async (file: File): Promise<ExtractedPdf> => {
   const buffer = Buffer.from(await file.arrayBuffer())
-  const data = await pdfParse(buffer)
+  let fullText = ''
+  const pages: Array<{ pageNumber: number; start: number; end: number }> = []
+  const data = await pdfParse(buffer, {
+    pagerender: async (pageData) => {
+      const textContent = await pageData.getTextContent()
+      const pageText = textContent.items
+        .map((item) => ('str' in item ? item.str : ''))
+        .join(' ')
+        .trim()
+      const normalizedPageText = pageText ? `${pageText}\n\n` : ''
+      const start = fullText.length
+      fullText += normalizedPageText
+      const end = fullText.length
+      pages.push({ pageNumber: pageData.pageIndex + 1, start, end })
+      return normalizedPageText
+    },
+  })
+
+  const text = data.text || fullText
   return {
-    text: data.text,
+    text,
     pageCount: data.numpages,
+    pages,
   }
 }
 

@@ -34,8 +34,8 @@ LLM APIを使って、実際に使えるPDF要約・質問応答アプリを1つ
 | ファイル | 内容 |
 |---|---|
 | `src/lib/storage.ts` | Supabase Storage への PDF 保存・削除・エラー分類 |
-| `src/lib/pdf.ts` | pdf-parse によるテキスト抽出・ページ数取得 |
-| `src/lib/chunking.ts` | テキストチャンク分割（3,000文字/チャンク・先頭5チャンク） |
+| `src/lib/pdf.ts` | pdf-parse によるテキスト抽出・ページ数取得・ページ境界オフセット生成 |
+| `src/lib/chunking.ts` | テキストチャンク分割（3,000文字/チャンク）＋チャンクのページ範囲（startPage/endPage）付与 |
 | `src/lib/summary.ts` | ドキュメント処理ジョブ（抽出→チャンク分割→要約保存） |
 | `src/app/upload/page.tsx` | PDFアップロードUI（ステータスポーリング・処理中表示） |
 
@@ -55,7 +55,6 @@ LLM APIを使って、実際に使えるPDF要約・質問応答アプリを1つ
 - トークン数・概算コスト表示 — Week 9〜10
 - Vercel デプロイ — Week 11〜12
 - 回答品質の手動評価・プロンプト改善（Week 9〜10）
-- citations のページ粒度精度向上（`page_start` / `page_end` 算出の実装）
 - 認証を `x-user-id` から Supabase Auth へ移行（Phase 2）
 
 ---
