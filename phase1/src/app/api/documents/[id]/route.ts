@@ -32,22 +32,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       })
     }
 
-    const document = mapDbDocumentToDetail(doc)
-    const response: DocumentDetailResponse & {
-      status: DocumentDetailResponse['document']['status']
-      page_count: number | null
-      char_count: number | null
-      summary: string | null
-      error_message: string | null
-      exceeds_qa_limit: boolean
-    } = {
-      document,
-      status: document.status,
-      page_count: document.pageCount,
-      char_count: document.charCount,
-      summary: document.summary,
-      error_message: document.errorMessage,
-      exceeds_qa_limit: document.exceedsQaLimit,
+    const response: DocumentDetailResponse = {
+      document: mapDbDocumentToDetail(doc),
     }
 
     return NextResponse.json(response)
