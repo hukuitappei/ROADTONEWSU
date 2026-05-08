@@ -202,6 +202,10 @@ export default function UploadPage() {
     }
   }
 
+  const refillQuestion = (value: string) => {
+    setQuestion(value)
+  }
+
   return (
     <main style={{ maxWidth: 720, margin: '0 auto', padding: '2rem 1rem' }}>
       <h1>PDFアップロード</h1>
@@ -310,7 +314,29 @@ export default function UploadPage() {
             {history.map((msg) => (
               <li key={msg.id} style={{ marginBottom: '0.75rem' }}>
                 <strong>{msg.role}</strong>: {msg.content}
-                {msg.citations && msg.citations.length > 0 && <div>citations: {msg.citations.length}件</div>}
+                {msg.role === 'user' && (
+                  <div>
+                    <button type="button" onClick={() => refillQuestion(msg.content)}>
+                      この質問を再利用
+                    </button>
+                  </div>
+                )}
+                {msg.citations && msg.citations.length > 0 && (
+                  <details style={{ marginTop: '0.4rem' }}>
+                    <summary>根拠（{msg.citations.length}件）</summary>
+                    <ul>
+                      {msg.citations.map((citation) => (
+                        <li key={`${msg.id}-${citation.chunkId}`}>
+                          <div>chunkId: {citation.chunkId}</div>
+                          <div>
+                            page: {citation.pageStart} - {citation.pageEnd}
+                          </div>
+                          <div style={{ whiteSpace: 'pre-wrap' }}>{citation.quote}</div>
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                )}
               </li>
             ))}
           </ul>
