@@ -32,7 +32,7 @@ export const enqueueDocumentProcessing = async (documentId: string, file: File) 
       error_message: qaEnabled ? null : PHASE1_QA_LIMIT_MESSAGE,
     })
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'document processing failed'
-    await updateDocument(documentId, { status: 'error', qaEnabled: false, error_message: message })
+    console.error('document_processing_failed', { documentId, error })
+    await updateDocument(documentId, { status: 'error', qaEnabled: false, error_message: 'PDFの処理に失敗しました。別のファイルで再試行してください。' })
   }
 }

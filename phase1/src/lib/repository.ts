@@ -1,4 +1,5 @@
 import { createSupabaseServiceClient } from '@/lib/supabase'
+import { deletePdfFromStorage } from '@/lib/storage'
 import type { Citation, DbDocumentChunkRow, DbDocumentRow, DbMessageRow, DbSessionRow, DocumentStatus } from '@/types/api'
 
 export const createSession = async (userId: string, title: string) => {
@@ -61,8 +62,12 @@ export const createDocument = async (sessionId: string, fileName: string, userId
 
 export const deleteDocument = async (id: string) => {
   const supabase = createSupabaseServiceClient()
+  const { data: doc } = await supabase.from('documents').select('storage_path').eq('id', id).maybeSingle<{ storage_path: string | null }>()
   const { error } = await supabase.from('documents').delete().eq('id', id)
   if (error) throw error
+  if (doc?.storage_path) {
+    await deletePdfFromStorage(doc.storage_path)
+  }
 }
 export const getDocument = async (id: string, userId: string) => {
   const supabase = createSupabaseServiceClient()
