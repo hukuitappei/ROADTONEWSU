@@ -4,6 +4,23 @@ const validUuid = '123e4567-e89b-12d3-a456-426614174000'
 
 const parseJson = async (res: Response) => (await res.json()) as { error?: { code: string; details?: unknown } }
 
+const readSseEvents = async (res: Response) => {
+  const body = await res.text()
+  return body
+    .split('\n\n')
+    .map((block) => block.trim())
+    .filter(Boolean)
+    .map((block) => {
+      const lines = block.split('\n')
+      const event = lines.find((line) => line.startsWith('event: '))?.slice(7)
+      const data = lines.find((line) => line.startsWith('data: '))?.slice(6)
+      return {
+        event,
+        data: data ? (JSON.parse(data) as Record<string, unknown>) : null,
+      }
+    })
+}
+
 beforeEach(() => {
   vi.resetModules()
 })
@@ -145,5 +162,99 @@ describe('API contract: route handlers', () => {
 
     expect(res.status).toBe(502)
     expect(body.error?.code).toBe('UPSTREAM_ERROR')
+  })
+
+  it('chat stream=true: start -> token* -> meta? -> done and SSE header contract', async () => {
+    vi.doMock('@/lib/repository', async () => {
+      const actual = await vi.importActual<object>('@/lib/repository')
+      return {
+        ...actual,
+        getSession: vi.fn(async () => ({ id: validUuid })),
+        addMessage: vi
+          .fn()
+          .mockResolvedValueOnce({ id: 'user-message-id' })
+          .mockResolvedValueOnce({ id: 'assistant-message-id' }),
+      }
+    })
+    vi.doMock('@/lib/llm', () => ({
+      generateAnswer: vi.fn(),
+      streamAnswer: vi.fn(async () =>
+        new ReadableStream({
+          start(controller) {
+            controller.enqueue(
+              new TextEncoder().encode(
+                [
+                  'data: {"choices":[{"delta":{"content":"Hello"}}]}\n',
+                  'data: {broken json}\n',
+                  'data: {"choices":[{"delta":{"content":" world"}}]}\n',
+                  'data: {"usage":{"prompt_tokens":1,"completion_tokens":2,"total_tokens":3}}\n',
+                ].join(''),
+              ),
+            )
+            controller.close()
+          },
+        }),
+      ),
+    }))
+
+    const { POST } = await import('@/app/api/chat/route')
+    const req = new Request('http://localhost/api/chat', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ sessionId: validUuid, message: 'hello', stream: true }),
+    })
+
+    const res = await POST(req)
+    const events = await readSseEvents(res)
+
+    expect(res.status).toBe(200)
+    expect(res.headers.get('content-type')).toBe('text/event-stream; charset=utf-8')
+    expect(res.headers.get('cache-control')).toBe('no-cache, no-transform')
+    expect(res.headers.get('connection')).toBe('keep-alive')
+
+    expect(events.map((item) => item.event)).toEqual(['start', 'token', 'token', 'meta', 'done'])
+    expect(events[1].data).toEqual({ delta: 'Hello' })
+    expect(events[2].data).toEqual({ delta: ' world' })
+    expect(events[3].data).toEqual({ usage: { promptTokens: 1, completionTokens: 2, totalTokens: 3 } })
+    expect(events[4].data).toEqual({ messageId: 'assistant-message-id', finishReason: 'stop' })
+  })
+
+  it('chat stream=true: provider stream exception emits error event', async () => {
+    vi.doMock('@/lib/repository', async () => {
+      const actual = await vi.importActual<object>('@/lib/repository')
+      return {
+        ...actual,
+        getSession: vi.fn(async () => ({ id: validUuid })),
+        addMessage: vi.fn(async () => ({ id: 'user-message-id' })),
+      }
+    })
+    vi.doMock('@/lib/llm', () => ({
+      generateAnswer: vi.fn(),
+      streamAnswer: vi.fn(async () =>
+        new ReadableStream({
+          start(controller) {
+            controller.enqueue(new TextEncoder().encode('data: {"choices":[{"delta":{"content":"Hello"}}]}\n'))
+            controller.error(new Error('stream failed'))
+          },
+        }),
+      ),
+    }))
+
+    const { POST } = await import('@/app/api/chat/route')
+    const req = new Request('http://localhost/api/chat', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ sessionId: validUuid, message: 'hello', stream: true }),
+    })
+
+    const res = await POST(req)
+    const events = await readSseEvents(res)
+
+    expect(res.status).toBe(200)
+    expect(events.map((item) => item.event)).toEqual(['start', 'token', 'error'])
+    expect(events[2].data).toEqual({
+      code: 'INTERNAL_ERROR',
+      message: 'サーバーエラーが発生しました。時間をおいて再試行してください。',
+    })
   })
 })
