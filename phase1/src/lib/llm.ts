@@ -5,6 +5,7 @@ const RETRY_DELAYS_MS = [1000, 2000, 4000] as const
 
 type GenerateAnswerInput = {
   prompt: string
+  systemPrompt?: string
   signal?: AbortSignal
 }
 
@@ -111,7 +112,7 @@ const fetchWithRetry = async (url: string, init: RequestInit) => {
   throw toProviderError(undefined, true)
 }
 
-export async function generateAnswer({ prompt, signal }: GenerateAnswerInput): Promise<ChatCompletion> {
+export async function generateAnswer({ prompt, systemPrompt, signal }: GenerateAnswerInput): Promise<ChatCompletion> {
   if (!prompt.trim()) {
     throw new Error('empty_prompt')
   }
@@ -131,7 +132,7 @@ export async function generateAnswer({ prompt, signal }: GenerateAnswerInput): P
         {
           role: 'system',
           content:
-            'あなたはPDF内容に基づいて回答するアシスタントです。根拠がない場合は「PDFの内容からは判断できません」と答えてください。',
+            systemPrompt ?? 'あなたはPDF内容に基づいて回答するアシスタントです。根拠がない場合は「PDFの内容からは判断できません」と答えてください。',
         },
         { role: 'user', content: prompt },
       ],
@@ -157,7 +158,7 @@ export async function generateAnswer({ prompt, signal }: GenerateAnswerInput): P
   }
 }
 
-export async function streamAnswer(prompt: string, signal?: AbortSignal) {
+export async function streamAnswer(prompt: string, signal?: AbortSignal, systemPrompt?: string) {
   if (!prompt.trim()) {
     throw new Error('empty_prompt')
   }
@@ -177,7 +178,7 @@ export async function streamAnswer(prompt: string, signal?: AbortSignal) {
         {
           role: 'system',
           content:
-            'あなたはPDF内容に基づいて回答するアシスタントです。根拠がない場合は「PDFの内容からは判断できません」と答えてください。',
+            systemPrompt ?? 'あなたはPDF内容に基づいて回答するアシスタントです。根拠がない場合は「PDFの内容からは判断できません」と答えてください。',
         },
         { role: 'user', content: prompt },
       ],
