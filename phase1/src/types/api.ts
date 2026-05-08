@@ -11,8 +11,8 @@ export type ApiError = {
 export type Citation = {
   docId?: string
   chunkId: string
-  pageStart: number
-  pageEnd: number
+  pageStart: number | null
+  pageEnd: number | null
   quote: string
 }
 
