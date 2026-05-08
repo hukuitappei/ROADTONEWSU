@@ -14,7 +14,7 @@ Next.js + Supabase + OpenAI API を使った、PDFアップロード/要約/質�
 - Week 9〜10（品質改善）: 完了
 - Week 11〜12:
   - ✅ README最終化（本ドキュメント）
-  - ⏳ Vercel公開/本番Supabase設定は運用作業として残タスク
+  - ⏳ Vercel公開/本番Supabase設定は実行待ち（手順・検証スクリプト整備済み）
   - ✅ Phase 2課題整理（`docs/phase2_handoff.md`）
 
 ## 主な機能
@@ -74,6 +74,25 @@ npm run dev
 cd phase1
 npm run test
 bash tests/api_contract_smoke.sh
+```
+
+
+## 本番公開チェック（Week 11〜12 追加実装）
+
+デプロイ前後で次のコマンドを実行してください。
+
+```bash
+cd phase1
+npm run type-check
+npm run test
+npm run build
+```
+
+デプロイ後のURL検証（`DEMO_URL` を設定）:
+
+```bash
+cd phase1
+DEMO_URL=https://your-app.vercel.app bash tests/deploy_smoke.sh
 ```
 
 ## APIエンドポイント（主要）
