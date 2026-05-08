@@ -6,7 +6,7 @@ LLM APIを使って、実際に使えるPDF要約・質問応答アプリを1つ
 
 ## 現在の進捗
 
-**55%（Week 5〜6 PDFアップロード〜要約フロー実装済み・要約LLM未接続）**
+**70%（Week 7〜8 の質問応答機能まで実装済み）**
 
 ---
 
@@ -50,17 +50,12 @@ LLM APIを使って、実際に使えるPDF要約・質問応答アプリを1つ
 | `tests/api_contract_smoke.sh` | API契約スモークチェックスクリプト |
 | `docs/api_contract.md` | API契約書 |
 
-### 未実装
+### 未実装 / 今後の課題
 
-- **PDF要約生成（LLM連携）** — 現状はテキスト切り出しのみ。LLM呼び出しによる要約未実装（Week 5-6 残件）
-- チャットUI（Reactコンポーネント一式）— Week 7〜8
-- citations（回答根拠）生成 — Week 7〜8
 - トークン数・概算コスト表示 — Week 9〜10
 - Vercel デプロイ — Week 11〜12
-- チャットAPIへのPDFコンテキスト注入（`documentIds` の実利用）
-- citations（回答根拠）生成と保存
-- 回答不可制御の厳密化（根拠不足/関連箇所なし/上限超過）
-- 質問履歴・Q&A UIの改善
+- 回答品質の手動評価・プロンプト改善（Week 9〜10）
+- citations のページ粒度精度向上（`page_start` / `page_end` 算出の実装）
 - 認証を `x-user-id` から Supabase Auth へ移行（Phase 2）
 
 ---
