@@ -128,7 +128,12 @@ export default function UploadPage() {
       })
 
       if (!response.ok) {
-        const error = (await response.json()) as ApiError
+        let error: ApiError | null = null
+        try {
+          error = (await response.json()) as ApiError
+        } catch {
+          error = null
+        }
         setUploadResult(null)
         setErrorMessage(mapUploadErrorMessage(error))
         return
