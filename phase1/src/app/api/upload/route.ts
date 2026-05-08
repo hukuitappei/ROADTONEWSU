@@ -3,8 +3,9 @@ import { NextResponse } from 'next/server'
 import { jsonError } from '@/lib/http'
 import { requireUserId } from '@/lib/auth'
 import { enqueueDocumentProcessing } from '@/lib/summary'
-import { createDocument, createSession, getSession } from '@/lib/repository'
+import { createDocument, createSession, deleteDocument, getSession, updateDocument, updateDocumentStoragePath } from '@/lib/repository'
 import { isUuid } from '@/lib/validation'
+import { deletePdfFromStorage, savePdfToStorage, StorageSaveError } from '@/lib/supabase'
 
 const MAX_PDF_BYTES = 10 * 1024 * 1024
 
@@ -77,10 +78,58 @@ export async function POST(req: Request) {
       })
     }
 
+    let uploadedStoragePath: string | null = null
+    try {
+      const binary = await file.arrayBuffer()
+      const saved = await savePdfToStorage(session.id, file.name, binary, file.type || 'application/pdf')
+      uploadedStoragePath = saved.storage_path
+    } catch (error) {
+      if (error instanceof StorageSaveError) {
+        if (error.type === 'authorization') {
+          return jsonError('INTERNAL_ERROR', 'ストレージへの保存権限がありません。管理者に連絡してください。', 500)
+        }
+        if (error.type === 'capacity') {
+          return jsonError('PAYLOAD_TOO_LARGE', 'ストレージ容量またはファイルサイズ制限を超えています。', 413)
+        }
+        if (error.type === 'network') {
+          return jsonError('INTERNAL_ERROR', 'ネットワークエラーによりアップロードに失敗しました。再試行してください。', 503)
+        }
+      }
+      return jsonError('INTERNAL_ERROR', 'サーバーエラーが発生しました。時間をおいて再試行してください。', 500)
+    }
+
     let document
     try {
       document = await createDocument(session.id, file.name, auth.userId)
+      if (uploadedStoragePath) {
+        await updateDocumentStoragePath(document.id, uploadedStoragePath)
+      }
     } catch {
+      if (uploadedStoragePath) {
+        try {
+          await deletePdfFromStorage(uploadedStoragePath)
+        } catch {
+          // ロールバック失敗時は監視で検知する前提で、クライアントには作成失敗を返す。
+        }
+      }
+      return jsonError('INTERNAL_ERROR', 'サーバーエラーが発生しました。時間をおいて再試行してください。', 500)
+    }
+
+    try {
+      await updateDocument(document.id, { status: 'processing', error_message: null })
+    } catch {
+      try {
+        await deleteDocument(document.id)
+      } catch {
+        // documents行の削除失敗は運用監視に委ねる
+      }
+      if (uploadedStoragePath) {
+        try {
+          await deletePdfFromStorage(uploadedStoragePath)
+        } catch {
+          // storage側の削除失敗は運用監視に委ねる
+        }
+      }
       return jsonError('INTERNAL_ERROR', 'サーバーエラーが発生しました。時間をおいて再試行してください。', 500)
     }
 

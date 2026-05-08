@@ -46,9 +46,31 @@ export const getMessages = async (sessionId: string, limit = 50, before?: string
 }
 export const createDocument = async (sessionId: string, fileName: string, userId: string) => {
   const supabase = createSupabaseServiceClient()
-  const { data, error } = await supabase.from('documents').insert({ user_id: userId, session_id: sessionId, filename: fileName, storage_path: `pending/${crypto.randomUUID()}-${fileName}`, status: 'processing' }).select('*').single<DbDocumentRow>()
+  const { data, error } = await supabase
+    .from('documents')
+    .insert({ user_id: userId, session_id: sessionId, filename: fileName, storage_path: null, status: 'uploaded' })
+    .select('*')
+    .single<DbDocumentRow>()
   if (error) throw error
   return data
+}
+
+export const updateDocumentStoragePath = async (id: string, storagePath: string) => {
+  const supabase = createSupabaseServiceClient()
+  const { data, error } = await supabase
+    .from('documents')
+    .update({ storage_path: storagePath })
+    .eq('id', id)
+    .select('*')
+    .maybeSingle<DbDocumentRow>()
+  if (error) throw error
+  return data
+}
+
+export const deleteDocument = async (id: string) => {
+  const supabase = createSupabaseServiceClient()
+  const { error } = await supabase.from('documents').delete().eq('id', id)
+  if (error) throw error
 }
 export const getDocument = async (id: string, userId: string) => {
   const supabase = createSupabaseServiceClient()

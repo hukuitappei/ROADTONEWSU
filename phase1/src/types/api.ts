@@ -102,6 +102,7 @@ export type DbDocumentRow = {
   id: string
   session_id: string
   filename: string
+  storage_path: string | null
   status: DocumentStatus
   summary: string | null
   page_count: number | null
