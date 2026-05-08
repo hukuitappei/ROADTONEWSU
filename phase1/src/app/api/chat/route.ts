@@ -11,6 +11,8 @@ import type { ChatRequest, ChatResponse } from '@/types/api'
 const MAX_CONTEXT_DOCS = 5
 const PHASE1_QA_CHUNK_LIMIT = 5
 const NO_ANSWER_MESSAGE = 'PDFの内容からは判断できません（根拠不足または関連箇所なし）。'
+const PROMPT_VERSION = 'v1.2'
+const SYSTEM_PROMPT = `あなたはPDF内容に基づいて回答するアシスタントです（prompt:${PROMPT_VERSION}）。根拠がない場合は「PDFの内容からは判断できません」と答えてください。`
 
 const buildChunkCitation = (chunkId: string, pageStart: number | null | undefined, pageEnd: number | null | undefined, quote: string) => ({
   chunkId,
@@ -161,7 +163,7 @@ export async function POST(req: Request) {
     const prompt = context ? `# 参照コンテキスト\n${context}\n\n# 質問\n${requestBody.message}` : requestBody.message
 
     if (shouldStream) {
-      const providerStream = await streamAnswer(prompt)
+      const providerStream = await streamAnswer(prompt, undefined, SYSTEM_PROMPT)
       const reader = providerStream.getReader()
       const decoder = new TextDecoder()
 
@@ -258,7 +260,7 @@ export async function POST(req: Request) {
       })
     }
 
-    const result = await generateAnswer({ prompt })
+    const result = await generateAnswer({ prompt, systemPrompt: SYSTEM_PROMPT })
     const content = result.content.trim() || NO_ANSWER_MESSAGE
 
     let estimatedCostUsd: number | undefined
