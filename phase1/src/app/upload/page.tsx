@@ -1,6 +1,6 @@
 'use client'
 
-import { FormEvent, useEffect, useMemo, useState } from 'react'
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react'
 import type { ApiError, DocumentDetail } from '@/types/api'
 
 type UploadResponse = {
@@ -10,6 +10,14 @@ type UploadResponse = {
   fileSize: number
   status: string
   createdAt: string
+}
+
+const getUserId = (): string => {
+  const stored = localStorage.getItem('phase1_user_id')
+  if (stored) return stored
+  const id = crypto.randomUUID()
+  localStorage.setItem('phase1_user_id', id)
+  return id
 }
 
 const mapUploadErrorMessage = (error: ApiError | null): string => {
@@ -40,6 +48,7 @@ const mapUploadErrorMessage = (error: ApiError | null): string => {
 }
 
 export default function UploadPage() {
+  const [userId, setUserId] = useState('')
   const [sessionId, setSessionId] = useState('')
   const [file, setFile] = useState<File | null>(null)
   const [isUploading, setIsUploading] = useState(false)
@@ -49,13 +58,25 @@ export default function UploadPage() {
   const [documentStates, setDocumentStates] = useState<Record<string, DocumentDetail>>({})
 
   useEffect(() => {
-    if (selectedDocumentIds.length === 0) return
+    setUserId(getUserId())
+  }, [])
+
+  // documentStates を ref で参照することで、ポーリング interval が
+  // state 更新のたびに再起動しないようにする。
+  const documentStatesRef = useRef(documentStates)
+  documentStatesRef.current = documentStates
+
+  useEffect(() => {
+    if (!userId || selectedDocumentIds.length === 0) return
 
     const controller = new AbortController()
 
     const fetchDocumentStatus = async (id: string) => {
       try {
-        const response = await fetch(`/api/documents/${id}`, { signal: controller.signal })
+        const response = await fetch(`/api/documents/${id}`, {
+          signal: controller.signal,
+          headers: { 'x-user-id': userId },
+        })
         if (!response.ok) return
         const payload = (await response.json()) as { document: DocumentDetail }
         setDocumentStates((prev) => ({ ...prev, [id]: payload.document }))
@@ -64,29 +85,25 @@ export default function UploadPage() {
       }
     }
 
-    selectedDocumentIds.forEach((id) => {
-      const doc = documentStates[id]
-      if (!doc || doc.status === 'processing' || doc.status === 'uploaded') {
-        void fetchDocumentStatus(id)
-      }
-    })
-
-    const intervalId = setInterval(() => {
+    const poll = () => {
       selectedDocumentIds.forEach((id) => {
-        const doc = documentStates[id]
+        const doc = documentStatesRef.current[id]
         if (!doc || doc.status === 'processing' || doc.status === 'uploaded') {
           void fetchDocumentStatus(id)
         }
       })
-    }, 2500)
+    }
+
+    poll()
+    const intervalId = setInterval(poll, 2500)
 
     return () => {
       controller.abort()
       clearInterval(intervalId)
     }
-  }, [selectedDocumentIds, documentStates])
+  }, [selectedDocumentIds, userId])
 
-  const canSubmit = useMemo(() => !isUploading && file !== null, [file, isUploading])
+  const canSubmit = useMemo(() => !isUploading && file !== null && userId !== '', [file, isUploading, userId])
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -106,6 +123,7 @@ export default function UploadPage() {
     try {
       const response = await fetch('/api/upload', {
         method: 'POST',
+        headers: { 'x-user-id': userId },
         body: formData,
       })
 
@@ -126,6 +144,14 @@ export default function UploadPage() {
     } finally {
       setIsUploading(false)
     }
+  }
+
+  const dismissDocument = (id: string) => {
+    setSelectedDocumentIds((prev) => prev.filter((did) => did !== id))
+    setDocumentStates((prev) => {
+      const { [id]: _, ...rest } = prev
+      return rest
+    })
   }
 
   return (
@@ -203,8 +229,8 @@ export default function UploadPage() {
                   {doc?.status === 'error' && (
                     <>
                       <div style={{ color: '#b00020' }}>error: {doc.errorMessage ?? '処理に失敗しました。'}</div>
-                      <button type="button" onClick={() => window.location.reload()}>
-                        再試行
+                      <button type="button" onClick={() => dismissDocument(id)}>
+                        リストから削除して再アップロード
                       </button>
                     </>
                   )}
