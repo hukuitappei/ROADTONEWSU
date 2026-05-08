@@ -1,7 +1,7 @@
 'use client'
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react'
-import type { ApiError, DocumentDetail } from '@/types/api'
+import type { ApiError, DocumentDetail, MessageItem } from '@/types/api'
 
 type UploadResponse = {
   uploadId: string
@@ -56,6 +56,10 @@ export default function UploadPage() {
   const [selectedDocumentIds, setSelectedDocumentIds] = useState<string[]>([])
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [documentStates, setDocumentStates] = useState<Record<string, DocumentDetail>>({})
+  const [question, setQuestion] = useState('')
+  const [qaAnswer, setQaAnswer] = useState('')
+  const [isAsking, setIsAsking] = useState(false)
+  const [history, setHistory] = useState<MessageItem[]>([])
 
   useEffect(() => {
     setUserId(getUserId())
@@ -104,6 +108,25 @@ export default function UploadPage() {
   }, [selectedDocumentIds, userId])
 
   const canSubmit = useMemo(() => !isUploading && file !== null && userId !== '', [file, isUploading, userId])
+  const activeReadyDocs = useMemo(
+    () => selectedDocumentIds.map((id) => documentStates[id]).filter((doc): doc is DocumentDetail => Boolean(doc?.status === 'ready' && doc.qaEnabled)),
+    [documentStates, selectedDocumentIds],
+  )
+
+  useEffect(() => {
+    const sid = uploadResult?.sessionId
+    if (!sid || !userId) return
+    void (async () => {
+      try {
+        const res = await fetch(`/api/sessions/${sid}?limit=100`, { headers: { 'x-user-id': userId } })
+        if (!res.ok) return
+        const json = (await res.json()) as { messages: MessageItem[] }
+        setHistory(json.messages)
+      } catch {
+        // no-op
+      }
+    })()
+  }, [uploadResult?.sessionId, userId, qaAnswer])
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -157,6 +180,26 @@ export default function UploadPage() {
       const { [id]: _, ...rest } = prev
       return rest
     })
+  }
+
+  const askQuestion = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (!uploadResult?.sessionId || !question.trim() || activeReadyDocs.length === 0) return
+    setIsAsking(true)
+    setQaAnswer('')
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-user-id': userId },
+        body: JSON.stringify({ sessionId: uploadResult.sessionId, message: question, documentIds: activeReadyDocs.map((d) => d.id), stream: false }),
+      })
+      const json = (await res.json()) as { content?: string }
+      setQaAnswer(json.content ?? '回答を取得できませんでした。')
+    } catch {
+      setQaAnswer('通信エラーが発生しました。')
+    } finally {
+      setIsAsking(false)
+    }
   }
 
   return (
@@ -242,6 +285,34 @@ export default function UploadPage() {
                 </li>
               )
             })}
+          </ul>
+        )}
+      </section>
+
+      <section style={{ marginTop: '2rem' }}>
+        <h2>Q&A</h2>
+        <p>ready かつ Q&A有効なドキュメントを対象に質問できます。</p>
+        <form onSubmit={askQuestion} style={{ display: 'grid', gap: '0.5rem' }}>
+          <textarea value={question} onChange={(e) => setQuestion(e.target.value)} rows={4} placeholder="質問を入力" />
+          <button type="submit" disabled={isAsking || activeReadyDocs.length === 0 || !uploadResult?.sessionId}>
+            {isAsking ? '回答生成中…' : '質問する'}
+          </button>
+        </form>
+        {qaAnswer && <div style={{ marginTop: '0.75rem', whiteSpace: 'pre-wrap' }}>回答: {qaAnswer}</div>}
+      </section>
+
+      <section style={{ marginTop: '2rem' }}>
+        <h2>質問履歴</h2>
+        {history.length === 0 ? (
+          <p>履歴はまだありません。</p>
+        ) : (
+          <ul>
+            {history.map((msg) => (
+              <li key={msg.id} style={{ marginBottom: '0.75rem' }}>
+                <strong>{msg.role}</strong>: {msg.content}
+                {msg.citations && msg.citations.length > 0 && <div>citations: {msg.citations.length}件</div>}
+              </li>
+            ))}
           </ul>
         )}
       </section>

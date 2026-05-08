@@ -88,6 +88,7 @@ export type MessageItem = {
   id: string
   role: 'user' | 'assistant'
   content: string
+  citations?: Citation[]
   createdAt: string
 }
 
@@ -99,7 +100,14 @@ export type SessionDetailResponse = {
 }
 
 export type DbSessionRow = { id: string; title: string | null; created_at: string | null }
-export type DbMessageRow = { id: string; session_id: string; role: 'user' | 'assistant'; content: string | null; created_at: string | null }
+export type DbMessageRow = {
+  id: string
+  session_id: string
+  role: 'user' | 'assistant'
+  content: string | null
+  citations?: Citation[] | null
+  created_at: string | null
+}
 export type DbDocumentRow = {
   id: string
   session_id: string
@@ -130,6 +138,7 @@ export const mapDbMessageToMessageItem = (row: DbMessageRow): MessageItem => ({
   id: row.id,
   role: row.role,
   content: row.content ?? '',
+  citations: row.citations ?? [],
   createdAt: toIso(row.created_at),
 })
 
