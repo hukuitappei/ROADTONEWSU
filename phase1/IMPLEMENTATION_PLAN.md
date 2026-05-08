@@ -373,13 +373,20 @@ export function estimateCost({ model, promptTokens, completionTokens }: {
 
 | # | タスク | 完了 |
 |---|---|---|
-| 1 | README.md（使い方・スクショ付き）作成 | [ ] |
+| 1 | README.md（使い方・スクショ付き）作成 | [x] |
 | 2 | Vercelへデプロイ | [ ] |
 | 3 | Supabaseの本番環境設定 | [ ] |
 | 4 | デモURL確認・動作テスト | [ ] |
-| 5 | Phase 2に向けた課題・改善点のまとめ | [ ] |
+| 5 | Phase 2に向けた課題・改善点のまとめ | [x] |
 
 ---
+
+
+### Week 11〜12 進捗メモ（2026-05-08）
+
+- READMEを更新し、セットアップ・実行手順・既知制約・デプロイ手順を明文化。
+- Phase 2引き継ぎドキュメント（`docs/phase2_handoff.md`）を新規作成。
+- Vercel公開と本番Supabase設定は、実運用環境の資格情報準備後に実施。
 
 ## 学習チェックリスト
 
