@@ -73,7 +73,12 @@ export async function POST(req: Request) {
     })
   }
 
-  const session = await getSession(body.sessionId, auth.userId)
+  let session
+  try {
+    session = await getSession(body.sessionId, auth.userId)
+  } catch {
+    return jsonError('INTERNAL_ERROR', 'サーバーエラーが発生しました。時間をおいて再試行してください。', 500)
+  }
   if (!session) {
     return jsonError('BAD_REQUEST', '入力内容に誤りがあります。内容を確認してください。', 400, {
       field: 'sessionId',
