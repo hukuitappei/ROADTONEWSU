@@ -1,7 +1,7 @@
 'use client'
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react'
-import type { ApiError, DocumentDetail, MessageItem } from '@/types/api'
+import type { ApiError, DocumentDetail, MessageItem, TokenUsage } from '@/types/api'
 
 type UploadResponse = {
   uploadId: string
@@ -58,6 +58,8 @@ export default function UploadPage() {
   const [documentStates, setDocumentStates] = useState<Record<string, DocumentDetail>>({})
   const [question, setQuestion] = useState('')
   const [qaAnswer, setQaAnswer] = useState('')
+  const [qaUsage, setQaUsage] = useState<TokenUsage | null>(null)
+  const [qaEstimatedCostUsd, setQaEstimatedCostUsd] = useState<number | null>(null)
   const [isAsking, setIsAsking] = useState(false)
   const [history, setHistory] = useState<MessageItem[]>([])
 
@@ -193,14 +195,20 @@ export default function UploadPage() {
         headers: { 'Content-Type': 'application/json', 'x-user-id': userId },
         body: JSON.stringify({ sessionId: uploadResult.sessionId, message: question, documentIds: activeReadyDocs.map((d) => d.id), stream: false }),
       })
-      const json = (await res.json()) as { content?: string }
+      const json = (await res.json()) as { content?: string; usage?: TokenUsage; estimatedCostUsd?: number }
       setQaAnswer(json.content ?? '回答を取得できませんでした。')
+      setQaUsage(json.usage ?? null)
+      setQaEstimatedCostUsd(typeof json.estimatedCostUsd === 'number' ? json.estimatedCostUsd : null)
     } catch {
       setQaAnswer('通信エラーが発生しました。')
+      setQaUsage(null)
+      setQaEstimatedCostUsd(null)
     } finally {
       setIsAsking(false)
     }
   }
+
+  const formatUsd = (value: number) => `$${value.toFixed(6)}`
 
   const refillQuestion = (value: string) => {
     setQuestion(value)
@@ -302,7 +310,17 @@ export default function UploadPage() {
             {isAsking ? '回答生成中…' : '質問する'}
           </button>
         </form>
-        {qaAnswer && <div style={{ marginTop: '0.75rem', whiteSpace: 'pre-wrap' }}>回答: {qaAnswer}</div>}
+        {qaAnswer && (
+          <div style={{ marginTop: '0.75rem', whiteSpace: 'pre-wrap' }}>
+            回答: {qaAnswer}
+            {qaUsage && (
+              <div style={{ marginTop: '0.5rem' }}>
+                tokens: prompt={qaUsage.promptTokens}, completion={qaUsage.completionTokens}, total={qaUsage.totalTokens}
+              </div>
+            )}
+            {qaEstimatedCostUsd !== null && <div>概算コスト: {formatUsd(qaEstimatedCostUsd)}</div>}
+          </div>
+        )}
       </section>
 
       <section style={{ marginTop: '2rem' }}>
@@ -319,6 +337,12 @@ export default function UploadPage() {
                     <button type="button" onClick={() => refillQuestion(msg.content)}>
                       この質問を再利用
                     </button>
+                  </div>
+                )}
+                {msg.usage && (
+                  <div style={{ fontSize: '0.9em', marginTop: '0.35rem' }}>
+                    tokens: prompt={msg.usage.promptTokens}, completion={msg.usage.completionTokens}, total={msg.usage.totalTokens}
+                    {typeof msg.estimatedCostUsd === 'number' && ` / 概算コスト: ${formatUsd(msg.estimatedCostUsd)}`}
                   </div>
                 )}
                 {msg.citations && msg.citations.length > 0 && (

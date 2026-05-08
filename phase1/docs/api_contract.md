@@ -163,6 +163,7 @@ curl -X POST /api/upload \
     "completionTokens": 210,
     "totalTokens": 1460
   },
+  "estimatedCostUsd": 0.000314,
   "createdAt": "2026-05-07T12:35:56Z"
 }
 ```
@@ -182,6 +183,7 @@ curl -X POST /api/upload \
   - `promptTokens` (required, integer)
   - `completionTokens` (required, integer)
   - `totalTokens` (required, integer)
+- `estimatedCostUsd` (optional, number): `usage` と `model` から計算した概算USD
 - `createdAt` (required, string): 生成時刻（ISO 8601）
 
 ### 主要エラーレスポンス

@@ -15,6 +15,12 @@ export type Citation = {
   quote: string
 }
 
+export type TokenUsage = {
+  promptTokens: number
+  completionTokens: number
+  totalTokens: number
+}
+
 export type ChatRequest = {
   sessionId: string
   message: string
@@ -28,11 +34,8 @@ export type ChatResponse = {
   role: 'assistant'
   content: string
   citations: Citation[]
-  usage?: {
-    promptTokens: number
-    completionTokens: number
-    totalTokens: number
-  }
+  usage?: TokenUsage
+  estimatedCostUsd?: number
   createdAt: string
 }
 
@@ -89,6 +92,8 @@ export type MessageItem = {
   role: 'user' | 'assistant'
   content: string
   citations?: Citation[]
+  usage?: TokenUsage
+  estimatedCostUsd?: number
   createdAt: string
 }
 

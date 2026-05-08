@@ -10,6 +10,7 @@ type GenerateAnswerInput = {
 
 export type ChatCompletion = {
   content: string
+  model?: string
   usage?: {
     promptTokens: number
     completionTokens: number
@@ -145,6 +146,7 @@ export async function generateAnswer({ prompt, signal }: GenerateAnswerInput): P
   const data = await res.json()
   return {
     content: data?.choices?.[0]?.message?.content ?? '',
+    model: data?.model,
     usage: data?.usage
       ? {
           promptTokens: data.usage.prompt_tokens,
