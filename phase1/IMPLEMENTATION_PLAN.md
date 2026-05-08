@@ -258,13 +258,15 @@ user:
   {extracted_text}
 
   ## 質問
+  {user_question}
+```
 
 ---
 
 ### Week 7〜8 完了メモ（2026-05-08時点）
 
 - `src/app/api/chat/route.ts` で `documentIds` を受け取り、対象ドキュメント（ready + qa_enabled）をコンテキストとしてプロンプトへ注入する処理を実装済み。
-- 回答レスポンス/履歴保存時に `citations` を付与する処理を実装済み（現状は document summary 由来の簡易引用）。
+- 回答レスポンス/履歴保存時に `citations` を付与する処理を実装済み。
 - Q&A対象外（選択ドキュメントが上限超過・未準備など）時は固定メッセージを返す制御を実装済み。
 - ユーザー/アシスタント双方のメッセージを `messages` に保存し、`/api/sessions/[id]` から質問履歴を表示するUIを実装済み。
 - `src/app/upload/page.tsx` に以下を実装済み:
@@ -273,13 +275,18 @@ user:
   - Q&Aフォームの有効/無効制御
   - 質問履歴表示
 
+### Week 7〜8 追加実装メモ（2026-05-08時点）
+
+- `src/lib/summary.ts` でアップロード処理時に全チャンクを `document_chunks` テーブルへ保存するよう変更。
+- `src/lib/repository.ts` に `saveDocumentChunks` / `getDocumentChunks` を追加。
+- `buildContext`（`src/app/api/chat/route.ts`）を summary ベースから **先頭5チャンクの実本文** ベースに切り替え。citations の `chunkId` も `${docId}:${chunk_index}` 形式に精度向上。
+- `document_chunks` が空の既存ドキュメントは `summary` フォールバックで引き続き動作する。
+- `src/types/api.ts` に `DbDocumentChunkRow` 型を追加。
+
 #### 残課題（Week 9以降へ持ち越し）
 
-1. Q&Aコンテキストが「全文抽出テキスト」ではなく「要約テキスト中心」のため、根拠精度が限定的。
-2. citations がチャンク単位の厳密引用ではなく、暫定的な summary ベース参照。
-3. Q&A UI は最低限の改善に留まり、再送/フィルタ/ハイライト等のUX拡張は未実装。
-  {user_question}
-```
+1. Q&A UI の UX 拡張（再送/フィルタ/ハイライト）は未実装。
+2. citations の `page_start` / `page_end` はページ単位の計算が未実装（現在は `null` 保存 → 表示上は `1` 固定）。
 
 ---
 

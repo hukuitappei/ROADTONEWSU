@@ -1,6 +1,6 @@
 import { chunkText, headSummaryChunks } from '@/lib/chunking'
 import { isPdfWithinQaLimit, PHASE1_QA_LIMIT_MESSAGE, extractPdfText } from '@/lib/pdf'
-import { updateDocument } from '@/lib/repository'
+import { saveDocumentChunks, updateDocument } from '@/lib/repository'
 
 const summarizeChunk = (text: string) => {
   const cleaned = text.replace(/\s+/g, ' ').trim()
@@ -14,7 +14,9 @@ export const enqueueDocumentProcessing = async (documentId: string, file: File) 
     const charCount = extracted.text.length
     const qaEnabled = isPdfWithinQaLimit(extracted.pageCount, charCount)
 
-    const summaryChunks = headSummaryChunks(chunkText(extracted.text))
+    const allChunks = chunkText(extracted.text)
+    await saveDocumentChunks(documentId, allChunks)
+    const summaryChunks = headSummaryChunks(allChunks)
     const summaryBody = summaryChunks.map((chunk) => `- ${summarizeChunk(chunk.content)}`).join('\n')
 
     const summary = qaEnabled

@@ -1,5 +1,5 @@
 import { createSupabaseServiceClient } from '@/lib/supabase'
-import type { Citation, DbDocumentRow, DbMessageRow, DbSessionRow, DocumentStatus } from '@/types/api'
+import type { Citation, DbDocumentChunkRow, DbDocumentRow, DbMessageRow, DbSessionRow, DocumentStatus } from '@/types/api'
 
 export const createSession = async (userId: string, title: string) => {
   const supabase = createSupabaseServiceClient()
@@ -89,6 +89,36 @@ export const getDocumentsByIds = async (userId: string, ids: string[]) => {
   if (error) throw error
   return data ?? []
 }
+export const saveDocumentChunks = async (
+  documentId: string,
+  chunks: Array<{ index: number; content: string }>,
+) => {
+  if (chunks.length === 0) return
+  const supabase = createSupabaseServiceClient()
+  const rows = chunks.map((c) => ({
+    document_id: documentId,
+    chunk_index: c.index,
+    content: c.content,
+    page_start: null,
+    page_end: null,
+  }))
+  const { error } = await supabase.from('document_chunks').upsert(rows, { onConflict: 'document_id,chunk_index' })
+  if (error) throw error
+}
+
+export const getDocumentChunks = async (documentId: string, limit = 5) => {
+  const supabase = createSupabaseServiceClient()
+  const { data, error } = await supabase
+    .from('document_chunks')
+    .select('*')
+    .eq('document_id', documentId)
+    .order('chunk_index', { ascending: true })
+    .limit(limit)
+    .returns<DbDocumentChunkRow[]>()
+  if (error) throw error
+  return data ?? []
+}
+
 export const updateDocument = async (
   id: string,
   patch: Partial<{

@@ -3,11 +3,12 @@ import { NextResponse } from 'next/server'
 import { jsonError, mapProviderErrorToApiError } from '@/lib/http'
 import { requireUserId } from '@/lib/auth'
 import { generateAnswer, streamAnswer } from '@/lib/llm'
-import { addMessage, getDocumentsByIds, getSession } from '@/lib/repository'
+import { addMessage, getDocumentChunks, getDocumentsByIds, getSession } from '@/lib/repository'
 import { isUuid } from '@/lib/validation'
 import type { ChatRequest, ChatResponse } from '@/types/api'
 
 const MAX_CONTEXT_DOCS = 5
+const PHASE1_QA_CHUNK_LIMIT = 5
 const NO_ANSWER_MESSAGE = 'PDFの内容からは判断できません（根拠不足または関連箇所なし）。'
 
 const buildContext = async (userId: string, documentIds: string[] | undefined) => {
@@ -15,17 +16,39 @@ const buildContext = async (userId: string, documentIds: string[] | undefined) =
   const docs = await getDocumentsByIds(userId, ids)
   const readyDocs = docs.filter((doc: { status: string; qa_enabled: boolean | null }) => doc.status === 'ready' && Boolean(doc.qa_enabled))
 
-  const context = readyDocs
-    .map((doc) => `Document ${doc.id} (${doc.filename})\n${doc.summary ?? ''}`)
-    .filter((v: string) => v.trim().length > 0)
+  const docContexts = await Promise.all(
+    readyDocs.map(async (doc) => {
+      const chunks = await getDocumentChunks(doc.id, PHASE1_QA_CHUNK_LIMIT)
+      if (chunks.length > 0) {
+        return {
+          contextText: `Document ${doc.id} (${doc.filename})\n${chunks.map((c) => c.content).join('\n\n')}`,
+          citations: chunks.map((c) => ({
+            chunkId: `${doc.id}:${c.chunk_index}`,
+            pageStart: c.page_start ?? 1,
+            pageEnd: c.page_end ?? 1,
+            quote: c.content.slice(0, 120),
+          })),
+        }
+      }
+      // fallback for documents processed before chunk saving was introduced
+      return {
+        contextText: `Document ${doc.id} (${doc.filename})\n${doc.summary ?? ''}`,
+        citations: [{
+          chunkId: `${doc.id}:summary`,
+          pageStart: 1,
+          pageEnd: doc.page_count ?? 1,
+          quote: (doc.summary ?? '').slice(0, 120),
+        }],
+      }
+    }),
+  )
+
+  const context = docContexts
+    .map((d) => d.contextText)
+    .filter((v) => v.trim().length > 0)
     .join('\n\n')
 
-  const citations = readyDocs.map((doc: { id: string; page_count: number | null; summary: string | null }) => ({
-    chunkId: `${doc.id}:summary`,
-    pageStart: 1,
-    pageEnd: doc.page_count ?? 1,
-    quote: (doc.summary ?? '').slice(0, 120),
-  }))
+  const citations = docContexts.flatMap((d) => d.citations)
 
   return { context, citations, qaBlocked: ids.length > 0 && readyDocs.length === 0 }
 }

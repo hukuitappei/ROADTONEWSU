@@ -123,6 +123,16 @@ export type DbDocumentRow = {
   updated_at: string | null
 }
 
+export type DbDocumentChunkRow = {
+  id: string
+  document_id: string
+  chunk_index: number
+  content: string
+  page_start: number | null
+  page_end: number | null
+  created_at: string | null
+}
+
 import { PHASE1_PDF_CHAR_LIMIT, PHASE1_PDF_PAGE_LIMIT } from '@/lib/pdf'
 
 const toIso = (v: string | null | undefined) => v ?? new Date(0).toISOString()
