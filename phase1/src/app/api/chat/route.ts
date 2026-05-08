@@ -172,6 +172,7 @@ export async function POST(req: Request) {
           controller.enqueue(encoder.encode(sse('start', {})))
 
           let streamUsage: { promptTokens: number; completionTokens: number; totalTokens: number } | null = null
+          let streamModel: string | null = null
           let assembledText = ''
 
           try {
@@ -194,6 +195,9 @@ export async function POST(req: Request) {
                     controller.enqueue(encoder.encode(sse('token', { delta })))
                   }
                   // stream_options: { include_usage: true } で最終チャンクに usage が付く
+                  if (typeof json?.model === 'string') {
+                    streamModel = json.model
+                  }
                   if (json?.usage) {
                     streamUsage = {
                       promptTokens: json.usage.prompt_tokens,
@@ -208,7 +212,20 @@ export async function POST(req: Request) {
             }
 
             if (streamUsage) {
-              controller.enqueue(encoder.encode(sse('meta', { usage: streamUsage })))
+              let estimatedCostUsd: number | undefined
+              if (streamModel) {
+                try {
+                  estimatedCostUsd = estimateCost({
+                    model: streamModel,
+                    promptTokens: streamUsage.promptTokens,
+                    completionTokens: streamUsage.completionTokens,
+                  })
+                } catch {
+                  estimatedCostUsd = undefined
+                }
+              }
+
+              controller.enqueue(encoder.encode(sse('meta', { usage: streamUsage, estimatedCostUsd })))
             }
 
             try {

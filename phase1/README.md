@@ -113,6 +113,13 @@ API契約の主要要素（型定義・エンドポイント・エラーコー�
 - **非対応形式**：画像PDF（スキャンPDF）・パスワード保護PDF・破損PDFは対象外
 
 
+
+### コスト見積もり運用制約（Phase 1）
+
+- `src/lib/pricing.ts` の単価テーブルは **1,000トークンあたり（inputPer1k / outputPer1k）USD** で管理する。
+- 未定義モデルの単価は **0として扱わず**、`estimateCost` は `unknown_model_pricing:<model>` エラーを送出する。
+- APIレスポンスでは既存クライアント互換のため、`usage` / `estimatedCostUsd` は optional で段階導入する。
+
 ### 認証に関する重要な注意（Phase 1）
 
 - 現在の `x-user-id` ヘッダーは **暫定的な擬似認証** であり、真正な本人確認を提供しません。

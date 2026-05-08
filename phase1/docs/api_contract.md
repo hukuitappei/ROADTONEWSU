@@ -186,6 +186,7 @@ curl -X POST /api/upload \
   - `completionTokens` (required, integer)
   - `totalTokens` (required, integer)
 - `estimatedCostUsd` (optional, number): `usage` と `model` から計算した概算USD
+- `usage` / `estimatedCostUsd` は既存クライアント互換のため optional（段階導入）。
 - `createdAt` (required, string): 生成時刻（ISO 8601）
 
 - `citations` の `pageStart` / `pageEnd` は `document_chunks.page_start` / `page_end` を返す。
@@ -208,7 +209,7 @@ curl -X POST /api/upload \
 
 - `event: start` : 生成開始
 - `event: token` : 部分テキスト
-- `event: meta` : 使用量や参照情報
+- `event: meta` : 使用量や概算コスト（`usage` / `estimatedCostUsd`）
 - `event: error` : 途中エラー
 - `event: done` : 生成完了
 
