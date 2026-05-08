@@ -5,7 +5,7 @@ import { requireUserId } from '@/lib/auth'
 import { enqueueDocumentProcessing } from '@/lib/summary'
 import { createDocument, createSession, deleteDocument, getSession, updateDocument, updateDocumentStoragePath } from '@/lib/repository'
 import { isUuid } from '@/lib/validation'
-import { deletePdfFromStorage, savePdfToStorage, StorageSaveError } from '@/lib/supabase'
+import { deletePdfFromStorage, savePdfToStorage, StorageSaveError } from '@/lib/storage'
 
 const MAX_PDF_BYTES = 10 * 1024 * 1024
 
