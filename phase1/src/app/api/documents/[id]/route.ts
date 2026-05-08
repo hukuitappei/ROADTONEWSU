@@ -5,28 +5,34 @@ import { getDocument } from '@/lib/repository'
 import { isUuid } from '@/lib/validation'
 import { mapDbDocumentToDetail, type DocumentDetailResponse } from '@/types/api'
 
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   return withUserRateLimit(req, async () => {
-  if (!isUuid(params.id)) {
-    return jsonError('BAD_REQUEST', '入力内容に誤りがあります。内容を確認してください。', 400, {
-      field: 'id',
-      reason: 'invalid_format',
-    })
-  }
+    if (!isUuid(id)) {
+      return jsonError('BAD_REQUEST', '入力内容に誤りがあります。内容を確認してください。', 400, {
+        field: 'id',
+        reason: 'invalid_format',
+      })
+    }
 
-  const doc = await getDocument(params.id)
-  if (!doc) {
-    return jsonError('NOT_FOUND', '対象のドキュメントが見つかりません。', 404, {
-      field: 'id',
-      reason: 'not_found',
-    })
-  }
+    let doc
+    try {
+      doc = await getDocument(id)
+    } catch {
+      return jsonError('INTERNAL_ERROR', 'サーバーエラーが発生しました。時間をおいて再試行してください。', 500)
+    }
 
-  const response: DocumentDetailResponse = {
-    document: mapDbDocumentToDetail(doc),
-  }
+    if (!doc) {
+      return jsonError('NOT_FOUND', '対象のドキュメントが見つかりません。', 404, {
+        field: 'id',
+        reason: 'not_found',
+      })
+    }
 
-  return NextResponse.json(response)
-}
+    const response: DocumentDetailResponse = {
+      document: mapDbDocumentToDetail(doc),
+    }
+
+    return NextResponse.json(response)
   })
 }
