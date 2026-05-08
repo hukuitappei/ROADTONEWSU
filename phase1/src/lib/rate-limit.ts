@@ -1,5 +1,7 @@
 import { jsonError } from '@/lib/http'
 import { createSupabaseServiceClient } from '@/lib/supabase'
+import { NextResponse } from 'next/server'
+import type { ApiError } from '@/types/api'
 
 const WINDOW_SECONDS = 60
 const MAX_REQUESTS_PER_WINDOW = 30
@@ -15,8 +17,15 @@ const getUserKey = (req: Request): string => {
   return 'anonymous'
 }
 
-const rateLimitedResponse = () =>
-  jsonError('RATE_LIMITED', 'リクエストが集中しています。しばらく待ってから再試行してください。', 429)
+const rateLimitedResponse = () => {
+  const body: ApiError = {
+    error: { code: 'RATE_LIMITED', message: 'リクエストが集中しています。しばらく待ってから再試行してください。' },
+  }
+  return NextResponse.json(body, {
+    status: 429,
+    headers: { 'Retry-After': String(WINDOW_SECONDS) },
+  })
+}
 
 export async function withUserRateLimit(req: Request, handler: () => Promise<Response>): Promise<Response> {
   const key = getUserKey(req)

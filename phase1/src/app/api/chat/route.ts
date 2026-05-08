@@ -58,7 +58,10 @@ const buildContext = async (userId: string, documentIds: string[] | undefined) =
 
   const citations = docContexts.flatMap((d) => d.citations)
 
-  return { context, citations, qaBlocked: ids.length > 0 && readyDocs.length === 0 }
+  // documentIds が指定されているのに参照可能なコンテキストが一切ない場合も回答不可とする。
+  // （ready+qa_enabled のドキュメントが存在するが chunks も summary も空のケースを含む）
+  const qaBlocked = ids.length > 0 && (readyDocs.length === 0 || context.trim().length === 0)
+  return { context, citations, qaBlocked }
 }
 
 const encoder = new TextEncoder()

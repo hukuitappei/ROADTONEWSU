@@ -162,6 +162,17 @@ export default function UploadPage() {
       })
 
       if (!response.ok) {
+        if (response.status === 429) {
+          const retryAfter = response.headers.get('Retry-After')
+          const seconds = retryAfter ? parseInt(retryAfter, 10) : null
+          setUploadResult(null)
+          setErrorMessage(
+            Number.isFinite(seconds) && seconds !== null
+              ? `アクセスが集中しています。${seconds}秒後に再試行してください。`
+              : 'アクセスが集中しています。しばらく待ってから再試行してください。'
+          )
+          return
+        }
         let error: ApiError | null = null
         try {
           error = (await response.json()) as ApiError
@@ -197,6 +208,17 @@ export default function UploadPage() {
 
   const CHAT_ERROR_MESSAGE = '回答の取得に失敗しました。ネットワーク状態を確認のうえ、再送してください。'
 
+  const mapChatErrorMessage = (res: Response): string => {
+    if (res.status === 429) {
+      const retryAfter = res.headers.get('Retry-After')
+      const seconds = retryAfter ? parseInt(retryAfter, 10) : null
+      return Number.isFinite(seconds) && seconds !== null
+        ? `アクセスが集中しています。${seconds}秒後に再試行してください。`
+        : 'アクセスが集中しています。しばらく待ってから再試行してください。'
+    }
+    return CHAT_ERROR_MESSAGE
+  }
+
   const sendQuestion = async (message: string): Promise<boolean> => {
     if (!uploadResult?.sessionId || !message.trim() || activeReadyDocs.length === 0) return false
 
@@ -211,7 +233,7 @@ export default function UploadPage() {
         body: JSON.stringify({ sessionId: uploadResult.sessionId, message, documentIds: activeReadyDocs.map((d) => d.id), stream: false }),
       })
       if (!res.ok) {
-        setQaErrorMessage(CHAT_ERROR_MESSAGE)
+        setQaErrorMessage(mapChatErrorMessage(res))
         setQaUsage(null)
         setQaEstimatedCostUsd(null)
         return false
